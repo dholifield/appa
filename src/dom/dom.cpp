@@ -2,7 +2,7 @@
 
 /* PID */
 PID::PID(double kp, double ki, double kd) : kp(kp), ki(ki), kd(kd) { reset(0.0); }
-PID::PID(PIDConst k) : kp(k.p), ki(k.i), kd(k.d) { reset(0.0); }
+PID::PID(Gains k) : kp(k.p), ki(k.i), kd(k.d) { reset(0.0); }
 
 void PID::reset(double error) {
     prev_error = error;
@@ -17,6 +17,7 @@ double PID::update(double error, double dt) {
 }
 
 /* Odom */
+
 
 
 /* Chassis */

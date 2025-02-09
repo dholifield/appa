@@ -1,10 +1,8 @@
 #pragma once
 
-#include "../api.h"
+#include "api.h"
 #include "utils.h"
-#include <mutex>
-#include <optional>
-#include <cmath>
+#include <atomic>
 
 /* PID */
 class PID {
@@ -13,7 +11,7 @@ class PID {
 
 public:
 	PID(double kp, double ki, double kd);
-	PID(PIDConst k);
+	PID(Gains k);
 	void reset(double error = 0.0);
 	double update(double error, double dt);
 };
@@ -22,9 +20,9 @@ public:
 class Odom {
 private:
 	Pose pose;
-	std::mutex mutex;
+	pros::Mutex mutex;
 
-	pros::adi::AnalogIn x_tracker, y_tracker;
+	pros::adi::Encoder x_tracker, y_tracker;
 	pros::Imu imu;
 	double tpi;
 
@@ -34,57 +32,55 @@ private:
 	double angular_offset;
 
 public:
-	Odom(double linear_offset, double angular_offset);
+	Odom(int x_port, int y_port, int imu_port, int tpi, Point linear_offset, double angular_offset);
 
 	void task();
-	void customTask();
 
 	void start();
 	void reset(Pose pose = {0, 0, 0});
-	void get();
+	void reset(double x, double y, double theta);
+	void reset(Point point);
+	void reset(double x, double y);
+	Pose get();
 	void set(Pose pose);
 };
 
 /* Chassis */
 class Chassis {
 private:
-	std::unique_ptr<pros::MotorGroup> left_motors, right_motors;
-
-	Odom odom;
-
-	PIDConst default_move_PID, default_ang_PID, default_turn_PID;
-
-	Options defaultMoveOptions, defaultTurnOptions;
+	pros::MotorGroup left_motors, right_motors;
+	Odom& odom;
+	Options default_move_options, default_turn_options;
+	std::atomic<bool> is_driving{false};
 
 public:
-  	Chassis(
+	Chassis(
 		std::initializer_list<int8_t> left_motors,
 		std::initializer_list<int8_t> right_motors,
-
-		PIDConst default_lin_PID,
-		PIDConst default_ang_PID,
-		PIDConst default_turn_PID,
-		double default_exit_dist,
-		double default_exit_angle,
-		double default_exit_timeout
+		Odom& odom,
+		Options default_move_options,
+		Options default_turn_ptions
 	);
 
+	void init();
+	void wait();
 	/**
-	 * Moves the robot to a point or a distance ahead
-	 * @param target target distance or point
-	 * @param speed maximum speed of movement
-	 * @param options 
+		* Moves the robot to a point or a distance ahead
+		* @param target target distance or point
+		* @param speed maximum speed of movement
+		* @param options 
 		* @param direction -1 reverse, 0 automatic, 1 forward
 		* @param exit_dist maximum distance from target to exit
 		* @param lin_PID pid constants for linear movement
 		* @param ang_PID pid constants for angular movement
-	 */
-	void move(Point target, double speed = 100, Options options = {});
-	void move(double target, double speed = 100, Options options = {});
-    void turn(Point target, double speed = 100, Options options = {});
-    void turn(double target, double speed = 100, Options options = {});
+		*/
+	void move(Point target, Options options = {});
+	void move(double target, Options options = {});
+	void turn(Point target, Options options = {});
+	void turn(double target, Options options = {});
 
 	void tank(double left_speed, double right_speed);
 	void arcade(double linear, double angular);
+	void arcade(pros::Controller& controller);
 	void stop();
 };

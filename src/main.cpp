@@ -1,66 +1,66 @@
 #include "main.h"
 
-/**
- * Runs initialization code. This occurs as soon as the program is started.
- *
- * All other competition modes are blocked by initialize; it is recommended
- * to keep execution time for this mode under a few seconds.
- */
+// Odom odom(	1,
+// 			3,
+// 			1,
+// 			10.00,
+// 			{5, 0},
+// 			45
+// 		);
+
+// Options move_options = {.exit = 1.0,		// inches
+// 						.settle = 100,		// ms
+// 						.timeout = 10000,	// ms
+// 						.speed = 85,		// %
+// 						.accel = 50,		// %/s
+// 						.lin_PID = Gains{1, 1, 1},
+// 						.ang_PID = Gains{1, 1, 1}
+// 					};
+
+
+// Options turn_options = {.exit = 2.0,		// degrees
+// 						.settle = 100,		// ms
+// 						.timeout = 5000,	// ms
+// 						.speed = 50,		// %
+// 						.accel = 50,		// %/s
+// 						.ang_PID = Gains{1, 1, 1}
+// 					};
+
+
+// Chassis bot({1, 2, 3, 4},
+// 			{5, 6, 7, 8},
+// 			odom,
+// 			move_options,
+// 			turn_options
+// 		);
+
 void initialize() {
-	
+	// odom.start();
+	// bot.init();
 }
 
-/**
- * Runs while the robot is in the disabled state of Field Management System or
- * the VEX Competition Switch, following either autonomous or opcontrol. When
- * the robot is enabled, this task will exit.
- */
 void disabled() {}
 
-/**
- * Runs after initialize(), and before autonomous when connected to the Field
- * Management System or the VEX Competition Switch. This is intended for
- * competition-specific initialization routines, such as an autonomous selector
- * on the LCD.
- *
- * This task will exit when the robot is enabled and autonomous or opcontrol
- * starts.
- */
 void competition_initialize() {}
 
-/**
- * Runs the user autonomous code. This function will be started in its own task
- * with the default priority and stack size whenever the robot is enabled via
- * the Field Management System or the VEX Competition Switch in the autonomous
- * mode. Alternatively, this function may be called in initialize or opcontrol
- * for non-competition testing purposes.
- *
- * If the robot is disabled or communications is lost, the autonomous task
- * will be stopped. Re-enabling the robot will restart the task, not re-start it
- * from where it left off.
- */
-void autonomous() {}
+void autonomous() {
+	// odom.reset(45, 10, 90);
+	// bot.move({45, 80}, {.speed = 100, .lin_PID = Gains{5, 1, 0}, .async = true});
+	// // do something while driving
+	// bot.wait();
+	// bot.move({45, 20});
 
-/**
- * Runs the operator control code. This function will be started in its own task
- * with the default priority and stack size whenever the robot is enabled via
- * the Field Management System or the VEX Competition Switch in the operator
- * control mode.
- *
- * If no competition control is connected, this function will run immediately
- * following initialize().
- *
- * If the robot is disabled or communications is lost, the
- * operator control task will be stopped. Re-enabling the robot will restart the
- * task, not resume it from where it left off.
- */
+	// bot.turn({20, 20});
+	// bot.move({20, 20}, {.speed = 80});
+	// bot.move(-10, {.speed = 20});
+}
+
 void opcontrol() {
 	pros::Controller master(pros::E_CONTROLLER_MASTER);
 
 	while (true) {
-		int linear = master.get_analog(ANALOG_LEFT_Y);    // Gets amount forward/backward from left joystick
-		int angular = master.get_analog(ANALOG_RIGHT_X);  // Gets the turn left/right from right joystick
+		// bot.arcade(master);
 		
-		pros::delay(10);                               // Run for 20 ms then update
+		pros::delay(10);
 	}
 }
