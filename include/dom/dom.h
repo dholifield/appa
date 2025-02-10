@@ -30,22 +30,25 @@ private:
 
 	Point tracker_linear_offset;
 	double tracker_angular_offset;
-	double imu_offset;
 
 public:
 	Odom(int x_port, int y_port, int imu_port, int tpi, Point tracker_linear_offset, double tracker_angular_offset);
 
 	void task();
 	void start();
-	void stop();
+	void suspend();
+	void resume();
 
 	Pose get();
+	Pose getLocal();
 	void set(Pose pose);
 	void set(Point point, double theta);
 	void set(double x, double y, double theta);
 	void setPoint(Point point);
 	void setPoint(double x, double y);
 	void setTheta(double theta);
+
+	void setOffset(Point linear);
 
 	void debug();
 };
