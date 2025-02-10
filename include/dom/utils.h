@@ -17,8 +17,8 @@ struct Options {
 	std::optional<Direction> dir;
 
 	std::optional<double> exit;
-	std::optional<double> settle;
-	std::optional<double> timeout;
+	std::optional<int> settle;
+	std::optional<int> timeout;
 
 	std::optional<double> speed;
 	std::optional<double> accel;
@@ -43,13 +43,13 @@ struct Point {
 	Point operator*(const double mult) const {
 		return Point({x * mult, y * mult});
 	}
-	double angle(const Point& other, double offset = 0.0) const {
-		Point diff = *this - other;
-		return std::fmod(atan2(diff.y, diff.x) - offset, M_PI);
-	}
 	double dist(const Point& other) const {
 		Point diff = *this - other;
 		return sqrt(diff.x * diff.x + diff.y * diff.y);
+	}
+	double angle(const Point& other, double offset = 0.0) const {
+		Point diff = *this - other;
+		return std::fmod(atan2(diff.y, diff.x) - offset, M_PI);
 	}
 	Point rotate(const double theta) const {
     	return {x * cos(theta) - y * sin(theta),
@@ -63,10 +63,15 @@ struct Pose {
 	Pose(double x = 0, double y = 0, double theta = 0) : x(x), y(y), theta(theta) {}
 	Pose(Point p, double theta) : x(p.x), y(p.y), theta(theta) {}
 
-	Pose operator+(const Point& other) const {
-		return Pose({x + other.x, y + other.y}, theta);
+	Pose operator+(const Point& p) const {
+		return Pose({x + p.x, y + p.y}, theta);
+	}
 
 	Point p() const { return {x, y}; }
+	double dist(const Point& other) const {
+		Point diff = this->p() - other;
+		return sqrt(diff.x * diff.x + diff.y * diff.y);
+	}
 	double angle(const Point& other) const {
 		Point diff = this->p() - other;
 		return std::fmod(atan2(diff.y, diff.x) - this->theta, M_PI);

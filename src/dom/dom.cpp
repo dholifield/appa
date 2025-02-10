@@ -25,6 +25,9 @@ Odom::Odom(int x_port, int y_port, int imu_port, int tpi, Point tracker_linear_o
         x_tracker(abs(x_port), abs(x_port) + 1, x_port < 0),
         y_tracker(abs(y_port), abs(y_port) + 1, y_port < 0),
         odom_task(nullptr) {
+    
+    imu.reset(true);
+    imu.set_data_rate(5);
 
     set({0, 0, 0});
 }
@@ -37,7 +40,7 @@ void Odom::task() {
         // get current sensor values
         Pose track = {x_tracker.get_value() / tpi,
                       y_tracker.get_value() / tpi,
-                      toRad(imu.get_rotation())};
+                      toRad(-imu.get_rotation())};
 
         // calculate change in sensor values
         Point dtrack = {track.x - prev_track.x,
@@ -56,8 +59,7 @@ void Odom::task() {
 
         // update tracker pose
         std::lock_guard<pros::Mutex> lock(odom_mutex);
-        odom_pose.x += dtrack.x;
-        odom_pose.y += dtrack.y;
+        odom_pose += dtrack;
         odom_pose.theta = track.theta;
         lock.unlock();
         
@@ -67,7 +69,7 @@ void Odom::task() {
 }
 
 void Odom::start() {
-    odom_task = new pros::Task([this] { task(); }, 16, TASK_STACK_DEPTH_DEFAULT, "odom_task");
+    odom_task = pros::Task([this] { task(); }, 16, TASK_STACK_DEPTH_DEFAULT, "odom_task");
 }
 
 void Odom::suspend() {
@@ -103,7 +105,7 @@ void Odom::setPoint(Point point) {
 
 void Odom::setTheta(double theta) {
     std::lock_guard<pros::Mutex> lock(odom_mutex);
-    imu.set_rotation(theta);
+    imu.set_rotation(-theta);
     odom_pose.theta = theta;
 }
 
@@ -123,3 +125,112 @@ void Odom::debug() {
 }
 
 /* Chassis */
+Chassis::Chassis(std::initializer_list<int8_t> left_motors,
+                 std::initializer_list<int8_t> right_motors,
+                 Odom& odom,
+                 Options default_move_options,
+                 Options default_turn_options)
+    : left_motors(left_motors),
+      right_motors(right_motors),
+      odom(odom),
+      default_move_options(default_move_options),
+      default_turn_options(default_turn_options),
+      chassis_task(nullptr) {}
+
+void Chassis::wait() {
+    chassis_task.join();
+}
+
+void Chassis::move(Point target, Options opts) {
+    // stop task if robot is already moving
+    if (chassis_task.get_state() != pros::E_TASK_STATE_DELETED)
+        chassis_task.remove();
+
+    // start task
+    chassis_task = pros::Task([this] {
+        // sort out options
+        Direction dir = opts.dir.value_or(df_move_opts.dir.value_or(AUTO));
+
+        double exit = opts.exit.value_or(df_move_opts.exit.value_or(1.0));
+        int settle = opts.settle.value_or(df_move_opts.settle.value_or(250));
+        int timeout = opts.timeout.value_or(df_move_opts.timeout.value_or(10000));
+
+        double speed = opts.speed.value_or(df_move_opts.speed.value_or(100));
+        double accel = opts.accel.value_or(df_move_opts.accel.value_or(50));
+
+        PID lin_PID(opts.lin_PID.value_or(df_move_opts.lin_PID.value_or(Gains{10.0, 0.0, 0.0})));
+        PID ang_PID(opts.ang_PID.value_or(df_move_opts.ang_PID.value_or(Gains{100.0, 0.0, 0.0})));
+
+        bool async = opts.async.value_or(df_move_opts.async.value_or(false));
+        bool thru = opts.thru.value_or(df_move_opts.thru.value_or(false));
+        bool relative = opts.relative.value_or(df_move_opts.relative.value_or(false));
+
+        // set up variables
+        double dt = 0.01; // 10 ms
+        Pose pose = odom.get();
+        if (relative) target = pose.p() + target.rotate(pose.theta);
+
+        // run control loop
+        while(true) {
+            // get current position
+            pose = odom.get();
+
+            // calculate error
+            double lin_error = pose.dist(target);
+            double ang_error = pose.angle(target);
+
+            // calculate PID
+            double lin_output = lin_PID.update(lin_error, dt);
+            double ang_output = ang_PID.update(ang_error, dt);
+
+            // apply limits
+            lin_output = lin_output > speed ? speed : lin_output < -speed ? -speed : lin_output;
+            ang_output = 
+
+            // determine direction
+            bool reverse = dir == REVERSE || (dir == AUTO && ang_output);
+
+            // loop every 2 ms
+            pros::delay((int)(dt * 1000));
+        }
+    });
+    // wait if not asynchroneous
+    if (!async) {
+        chassis_task.join();
+    }
+
+}
+
+
+void Chassis::move(double target, Options options) {
+
+}
+
+void Chassis::turn(Point target, Options options) {
+
+}
+
+void Chassis::turn(double target, Options options) {
+
+}
+
+void Chassis::tank(double left_speed, double right_speed) {
+    left_motors.move_voltage(left_speed * 120);
+    right_motors.move_voltage(right_speed * 120);
+}
+
+void Chassis::arcade(double linear, double angular) {
+    double left_speed = linear + angular;
+    double right_speed = linear - angular;
+    tank(left_speed, right_speed);
+}
+
+void Chassis::arcade(pros::Controller& controller) {
+    double linear = controller.get_analog(pros::E_CONTROLLER_ANALOG_LEFT_Y);
+    double angular = controller.get_analog(pros::E_CONTROLLER_ANALOG_RIGHT_X);
+    arcade(linear, angular);
+}
+
+void Chassis::stop() {
+    tank(0, 0);
+}

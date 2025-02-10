@@ -3,6 +3,7 @@
 #include "api.h"
 #include "utils.h"
 #include <atomic>
+#include <optional>
 #include <mutex>
 
 /* PID */
@@ -58,7 +59,9 @@ class Chassis {
 private:
 	pros::MotorGroup left_motors, right_motors;
 	Odom& odom;
-	Options default_move_options, default_turn_options;
+	Options df_move_opts, df_turn_opts;
+
+	pros::Task chassis_task;
 	std::atomic<bool> is_driving{false};
 
 public:
@@ -70,22 +73,17 @@ public:
 		Options default_turn_ptions
 	);
 
-	void init();
-	void wait();
 	/**
-		* Moves the robot to a point or a distance ahead
-		* @param target target distance or point
-		* @param speed maximum speed of movement
-		* @param options 
-		* @param direction -1 reverse, 0 automatic, 1 forward
-		* @param exit_dist maximum distance from target to exit
-		* @param lin_PID pid constants for linear movement
-		* @param ang_PID pid constants for angular movement
-		*/
+	 * Move the robot to a point or a distance ahead
+	 * @param target target distance or point
+	 * @param options additional options
+	 */
 	void move(Point target, Options options = {});
 	void move(double target, Options options = {});
 	void turn(Point target, Options options = {});
 	void turn(double target, Options options = {});
+
+	void wait();
 
 	void tank(double left_speed, double right_speed);
 	void arcade(double linear, double angular);
