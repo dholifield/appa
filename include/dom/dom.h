@@ -3,6 +3,7 @@
 #include "api.h"
 #include "utils.h"
 #include <atomic>
+#include <mutex>
 
 /* PID */
 class PID {
@@ -19,30 +20,34 @@ public:
 /* Odom */
 class Odom {
 private:
-	Pose pose;
-	pros::Mutex mutex;
+	Pose odom_pose;
+	pros::Mutex odom_mutex;
+	pros::Task odom_task;
 
 	pros::adi::Encoder x_tracker, y_tracker;
 	pros::Imu imu;
 	double tpi;
 
-	double prev_x, prev_y;
-
-	Point linear_offset;
-	double angular_offset;
+	Point tracker_linear_offset;
+	double tracker_angular_offset;
+	double imu_offset;
 
 public:
-	Odom(int x_port, int y_port, int imu_port, int tpi, Point linear_offset, double angular_offset);
+	Odom(int x_port, int y_port, int imu_port, int tpi, Point tracker_linear_offset, double tracker_angular_offset);
 
 	void task();
-
 	void start();
-	void reset(Pose pose = {0, 0, 0});
-	void reset(double x, double y, double theta);
-	void reset(Point point);
-	void reset(double x, double y);
+	void stop();
+
 	Pose get();
 	void set(Pose pose);
+	void set(Point point, double theta);
+	void set(double x, double y, double theta);
+	void setPoint(Point point);
+	void setPoint(double x, double y);
+	void setTheta(double theta);
+
+	void debug();
 };
 
 /* Chassis */
