@@ -1,18 +1,18 @@
 #include "main.h"
 
-dom::Odom odom({1, 3},	// x tracker
-			   {1, 1},	// y tracker
+dom::Odom odom({2, 3},	// x tracker
+			   {2, 1},	// y tracker
 			   13,		// imu
 			   321.5,	// tpi
 			   {5, 0},	// tracker linear offset
 			   45 );	// tracker angular offset
 
 dom::Options move_options = {.exit = 1.0,		// inches
-							 .timeout = 5000,	// ms
+							 .timeout = 0,	// ms
 							 .speed = 85,		// %
 							 .accel = 50,		// %/s
-							 .lin_PID = dom::Gains{0, 0, 0},	// linear pid gains
-							 .ang_PID = dom::Gains{0, 0, 0} };	// angular pid gains
+							 .lin_PID = dom::Gains{10, 0, 0},	// linear pid gains
+							 .ang_PID = dom::Gains{50, 0, 0} };	// angular pid gains
 
 dom::Options turn_options = {.exit = 2.0,		// degrees
 							 .timeout = 5000,	// ms
@@ -20,11 +20,11 @@ dom::Options turn_options = {.exit = 2.0,		// degrees
 							 .accel = 50,		// %/s
 							 .ang_PID = dom::Gains{0, 0, 0} };	// angular pid gains
 
-dom::Chassis bot({0, 0, 0, 0},	 // left motors
-				 {0, 0, 0, 0},	 // right motors
-				 odom,			 // odom
-				 move_options,	 // default move options
-				 turn_options ); // default turn options
+dom::Chassis bot({-10, -9, 8, 3, -1},	// left motors
+				 {17, 19, -18, -12, 11},// right motors
+				 odom,			 		// odom
+				 move_options,	 		// default move options
+				 turn_options ); 		// default turn options
 
 void initialize() {
 	odom.start();
@@ -53,7 +53,7 @@ void opcontrol() {
 
 	while (true) {
 		bot.arcade(master);
-		odom.debug();
+		// odom.debug();
 		pros::delay(10);
 	}
 }

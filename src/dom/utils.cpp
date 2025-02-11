@@ -11,7 +11,7 @@ void PID::reset(double error) {
 }
 
 double PID::update(double error, int dt) {
-    double dt_s = dt / 1000.0;
+    double dt_s = (double)dt / 1000.0;
     double derivative = (error - prev_error) / dt_s;
     total_error += error * dt_s;
     prev_error = error;

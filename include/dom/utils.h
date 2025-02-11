@@ -74,7 +74,7 @@ struct Point {
 		return sqrt(diff.x * diff.x + diff.y * diff.y);
 	}
 	double angle(const Point& other, double offset = 0.0) const {
-		Point diff = *this - other;
+		Point diff = other - *this;
 		return std::fmod(atan2(diff.y, diff.x) - offset, M_PI);
 	}
 	Point rotate(const double theta) const {

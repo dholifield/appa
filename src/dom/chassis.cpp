@@ -23,8 +23,9 @@ void Chassis::init() {
 }
 
 void Chassis::wait() {
-    if (chassis_task)
+    if (chassis_task) {
         chassis_task->join();
+    }
 }
 
 void Chassis::move_task(Point target, Options opts) {
@@ -64,7 +65,7 @@ void Chassis::move_task(Point target, Options opts) {
     uint32_t now = pros::millis();
 
     // control loop
-    while(lin_error > exit && pros::millis() - start_time < timeout) {
+    while(true) {
         // calculate error
         pose = odom.get();
         lin_error = pose.dist(target);
@@ -103,6 +104,10 @@ void Chassis::move_task(Point target, Options opts) {
 
         // set motor speeds
         tank(left_speed, right_speed);
+
+        // check exit conditions
+        if (timeout > 0 && pros::millis() - start_time > timeout) break;
+        if (lin_error < exit) break;
 
         // delay task
         pros::c::task_delay_until(&now, dt);
@@ -176,4 +181,4 @@ void Chassis::set_brake_mode(pros::motor_brake_mode_e_t mode) {
  * TODO: implement accel
  * TODO: implement settle exit for stuck robot
  * TODO: implement turn_task
- * /
+ */
