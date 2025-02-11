@@ -35,6 +35,7 @@ private:
 
 public:
 	Odom(int x_port, int y_port, int imu_port, int tpi, Point tracker_linear_offset, double tracker_angular_offset);
+	Odom(std::tuple<int8_t, int8_t, int8_t> x_port, std::tuple<int8_t, int8_t, int8_t> y_port, int imu_port, int tpi, Point tracker_linear_offset, double tracker_angular_offset);
 
 	void task();
 	void start();

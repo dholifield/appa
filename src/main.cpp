@@ -1,6 +1,6 @@
 #include "main.h"
 
-dom::Odom odom(3, 1, 5, 321.5, {2, 0}, 45);
+dom::Odom odom({1, 3, 4}, {1, 1, 2}, 13, 321.5, {5, 0}, 45);
 
 // dom::Options move_options = {.exit = 1.0,	// inches
 // 						.settle = 100,		// ms
@@ -29,7 +29,7 @@ dom::Odom odom(3, 1, 5, 321.5, {2, 0}, 45);
 // 		);
 
 void initialize() {
-	// odom.start();
+	odom.start();
 }
 
 void disabled() {}
@@ -54,7 +54,7 @@ void opcontrol() {
 
 	while (true) {
 		// bot.arcade(master);
-		// odom.debug();
+		odom.debug();
 		pros::delay(10);
 	}
 }

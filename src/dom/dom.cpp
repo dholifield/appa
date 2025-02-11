@@ -27,8 +27,15 @@ Odom::Odom(int x_port, int y_port, int imu_port, int tpi, Point tracker_linear_o
         x_tracker(abs(x_port), abs(x_port) + 1, x_port < 0),
         y_tracker(abs(y_port), abs(y_port) + 1, y_port < 0) {}
 
+Odom::Odom(std::tuple<int8_t, int8_t, int8_t> x_port, std::tuple<int8_t, int8_t, int8_t> y_port, int imu_port, int tpi, Point tracker_linear_offset, double tracker_angular_offset) :
+        tpi(tpi),
+        tracker_linear_offset(tracker_linear_offset),
+        tracker_angular_offset(to_rad(tracker_angular_offset)),
+        imu(imu_port),
+        x_tracker(x_port, false),
+        y_tracker(y_port, false) {}
+
 void Odom::task() {
-    printf("odom task started\n");
     Pose prev_track = {0, 0, 0};
     uint32_t now = pros::millis();
 
@@ -54,9 +61,10 @@ void Odom::task() {
         dtrack = dtrack.rotate(track.theta + tracker_angular_offset);
 
         // update tracker pose
-        std::lock_guard<pros::Mutex> lock(odom_mutex);
+        odom_mutex.take();
         odom_pose += dtrack;
         odom_pose.theta = track.theta;
+        odom_mutex.give();
         
         // loop every 5 ms
         pros::c::task_delay_until(&now, 5);
@@ -64,9 +72,9 @@ void Odom::task() {
 }
 
 void Odom::start() {
-    printf("starting odom task\n");
-    imu.set_data_rate(5);
+    // imu.set_data_rate(5);
     imu.reset(true);
+    imu.set_data_rate(5);
 
     set({0, 0, 0});
     pros::Task odom_task([this] { task(); }, 16, TASK_STACK_DEPTH_DEFAULT, "odom_task");
@@ -84,8 +92,8 @@ Pose Odom::getLocal() {
 }
 
 void Odom::set(Pose pose) {
-    std::lock_guard<pros::Mutex> lock(odom_mutex);
-    setTheta(pose.theta);
+    const std::lock_guard<pros::Mutex> lock(odom_mutex);
+    imu.set_rotation(-pose.theta);
     odom_pose = pose;
 }
 
