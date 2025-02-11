@@ -1,14 +1,8 @@
 #include "main.h"
 
-// Odom odom(	1,
-// 			3,
-// 			1,
-// 			10.00,
-// 			{5, 0},
-// 			45
-// 		);
+dom::Odom odom(3, 1, 5, 321.5, {2, 0}, 45);
 
-// Options move_options = {.exit = 1.0,		// inches
+// dom::Options move_options = {.exit = 1.0,	// inches
 // 						.settle = 100,		// ms
 // 						.timeout = 10000,	// ms
 // 						.speed = 85,		// %
@@ -18,7 +12,7 @@
 // 					};
 
 
-// Options turn_options = {.exit = 2.0,		// degrees
+// dom::Options turn_options = {.exit = 2.0,	// degrees
 // 						.settle = 100,		// ms
 // 						.timeout = 5000,	// ms
 // 						.speed = 50,		// %
@@ -27,7 +21,7 @@
 // 					};
 
 
-// Chassis bot({1, 2, 3, 4},
+// dom::Chassis bot({1, 2, 3, 4},
 // 			{5, 6, 7, 8},
 // 			odom,
 // 			move_options,
@@ -36,7 +30,6 @@
 
 void initialize() {
 	// odom.start();
-	// bot.init();
 }
 
 void disabled() {}
@@ -57,10 +50,11 @@ void autonomous() {
 
 void opcontrol() {
 	pros::Controller master(pros::E_CONTROLLER_MASTER);
+	printf("opcontrol started\n");
 
 	while (true) {
 		// bot.arcade(master);
-		
+		// odom.debug();
 		pros::delay(10);
 	}
 }

@@ -2,6 +2,8 @@
 
 #include "dom.h"
 
+namespace dom {
+
 // Utils //
 enum Direction {
 	FORWARD = 1,
@@ -43,6 +45,18 @@ struct Point {
 	Point operator*(const double mult) const {
 		return Point({x * mult, y * mult});
 	}
+	void operator+=(const Point& other) {
+		x += other.x;
+		y += other.y;
+	}
+	void operator-=(const Point& other) {
+		x -= other.x;
+		y -= other.y;
+	}
+	void operator*=(const double mult) {
+		x *= mult;
+		y *= mult;
+	}
 	double dist(const Point& other) const {
 		Point diff = *this - other;
 		return sqrt(diff.x * diff.x + diff.y * diff.y);
@@ -66,6 +80,10 @@ struct Pose {
 	Pose operator+(const Point& p) const {
 		return Pose({x + p.x, y + p.y}, theta);
 	}
+	void operator+=(const Point& p) {
+		x += p.x;
+		y += p.y;
+	}
 
 	Point p() const { return {x, y}; }
 	double dist(const Point& other) const {
@@ -78,5 +96,7 @@ struct Pose {
 	}
 };
 
-double toRad(double deg);
-double toDeg(double rad);
+double to_rad(double deg);
+double to_deg(double rad);
+
+}

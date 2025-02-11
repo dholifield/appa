@@ -1,5 +1,7 @@
 #include "dom.h"
 
+namespace dom {
+
 /* PID */
 PID::PID(double kp, double ki, double kd) : kp(kp), ki(ki), kd(kd) { reset(0.0); }
 PID::PID(Gains k) : kp(k.p), ki(k.i), kd(k.d) { reset(0.0); }
@@ -20,19 +22,13 @@ double PID::update(double error, double dt) {
 Odom::Odom(int x_port, int y_port, int imu_port, int tpi, Point tracker_linear_offset, double tracker_angular_offset) :
         tpi(tpi),
         tracker_linear_offset(tracker_linear_offset),
-        tracker_angular_offset(toRad(tracker_angular_offset)),
+        tracker_angular_offset(to_rad(tracker_angular_offset)),
         imu(imu_port),
         x_tracker(abs(x_port), abs(x_port) + 1, x_port < 0),
-        y_tracker(abs(y_port), abs(y_port) + 1, y_port < 0),
-        odom_task(nullptr) {
-    
-    imu.reset(true);
-    imu.set_data_rate(5);
-
-    set({0, 0, 0});
-}
+        y_tracker(abs(y_port), abs(y_port) + 1, y_port < 0) {}
 
 void Odom::task() {
+    printf("odom task started\n");
     Pose prev_track = {0, 0, 0};
     uint32_t now = pros::millis();
 
@@ -40,7 +36,7 @@ void Odom::task() {
         // get current sensor values
         Pose track = {x_tracker.get_value() / tpi,
                       y_tracker.get_value() / tpi,
-                      toRad(-imu.get_rotation())};
+                      to_rad(-imu.get_rotation())};
 
         // calculate change in sensor values
         Point dtrack = {track.x - prev_track.x,
@@ -61,23 +57,19 @@ void Odom::task() {
         std::lock_guard<pros::Mutex> lock(odom_mutex);
         odom_pose += dtrack;
         odom_pose.theta = track.theta;
-        lock.unlock();
         
-        // loop every 2 ms
-        pros::task_delay_until(&now, 2);
+        // loop every 5 ms
+        pros::c::task_delay_until(&now, 5);
     }
 }
 
 void Odom::start() {
-    odom_task = pros::Task([this] { task(); }, 16, TASK_STACK_DEPTH_DEFAULT, "odom_task");
-}
+    printf("starting odom task\n");
+    imu.set_data_rate(5);
+    imu.reset(true);
 
-void Odom::suspend() {
-    odom_task.suspend();
-}
-
-void Odom::resume() {
-    odom_task.resume();
+    set({0, 0, 0});
+    pros::Task odom_task([this] { task(); }, 16, TASK_STACK_DEPTH_DEFAULT, "odom_task");
 }
 
 Pose Odom::get() {
@@ -103,6 +95,16 @@ void Odom::setPoint(Point point) {
     odom_pose.y = point.y;
 }
 
+void Odom::setX(double x) {
+    std::lock_guard<pros::Mutex> lock(odom_mutex);
+    odom_pose.x = x;
+}
+
+void Odom::setY(double y) {
+    std::lock_guard<pros::Mutex> lock(odom_mutex);
+    odom_pose.y = y;
+}
+
 void Odom::setTheta(double theta) {
     std::lock_guard<pros::Mutex> lock(odom_mutex);
     imu.set_rotation(-theta);
@@ -119,12 +121,12 @@ void Odom::setOffset(Point linear) {
 }
 
 void Odom::debug() {
-    printf("odom_task priority: %d\n", odom_task.get_priority());
+    // printf("odom_task priority: %d\n", odom_task.get_priority());
     Pose pose = get();
-    printf("x: %.2f, y: %.2f, theta: %.2f\n", pose.x, pose.y, pose.theta);
+    printf("x: %.2f, y: %.2f, theta: %.2f\n", pose.x, pose.y, to_deg(pose.theta));
 }
 
-/* Chassis */
+/* Chassis
 Chassis::Chassis(std::initializer_list<int8_t> left_motors,
                  std::initializer_list<int8_t> right_motors,
                  Odom& odom,
@@ -133,9 +135,8 @@ Chassis::Chassis(std::initializer_list<int8_t> left_motors,
     : left_motors(left_motors),
       right_motors(right_motors),
       odom(odom),
-      default_move_options(default_move_options),
-      default_turn_options(default_turn_options),
-      chassis_task(nullptr) {}
+      df_move_opts(default_move_options),
+      df_turn_opts(default_turn_options) {}
 
 void Chassis::wait() {
     chassis_task.join();
@@ -146,46 +147,56 @@ void Chassis::move(Point target, Options opts) {
     if (chassis_task.get_state() != pros::E_TASK_STATE_DELETED)
         chassis_task.remove();
 
+    // get if async
+    bool async = opts.async.value_or(df_move_opts.async.value_or(false));
+
     // start task
-    chassis_task = pros::Task([this] {
-        // sort out options
-        Direction dir = opts.dir.value_or(df_move_opts.dir.value_or(AUTO));
+    chassis_task = pros::Task();
 
-        double exit = opts.exit.value_or(df_move_opts.exit.value_or(1.0));
-        int settle = opts.settle.value_or(df_move_opts.settle.value_or(250));
-        int timeout = opts.timeout.value_or(df_move_opts.timeout.value_or(10000));
+    // wait if not asynchroneous
+    if (!async) {
+        chassis_task.join();
+    }
+}
 
-        double speed = opts.speed.value_or(df_move_opts.speed.value_or(100));
-        double accel = opts.accel.value_or(df_move_opts.accel.value_or(50));
+void Chassis::moveTask(Point target, Options opts) {
+    // sort out options
+    Direction dir = opts.dir.value_or(df_move_opts.dir.value_or(AUTO));
 
-        PID lin_PID(opts.lin_PID.value_or(df_move_opts.lin_PID.value_or(Gains{10.0, 0.0, 0.0})));
-        PID ang_PID(opts.ang_PID.value_or(df_move_opts.ang_PID.value_or(Gains{100.0, 0.0, 0.0})));
+    double exit = opts.exit.value_or(df_move_opts.exit.value_or(1.0));
+    int settle = opts.settle.value_or(df_move_opts.settle.value_or(250));
+    int timeout = opts.timeout.value_or(df_move_opts.timeout.value_or(10000));
 
-        bool async = opts.async.value_or(df_move_opts.async.value_or(false));
-        bool thru = opts.thru.value_or(df_move_opts.thru.value_or(false));
-        bool relative = opts.relative.value_or(df_move_opts.relative.value_or(false));
+    double speed = opts.speed.value_or(df_move_opts.speed.value_or(100));
+    double accel = opts.accel.value_or(df_move_opts.accel.value_or(50));
 
-        // set up variables
-        double dt = 0.01; // 10 ms
-        Pose pose = odom.get();
-        if (relative) target = pose.p() + target.rotate(pose.theta);
+    PID lin_PID(opts.lin_PID.value_or(df_move_opts.lin_PID.value_or(Gains{10.0, 0.0, 0.0})));
+    PID ang_PID(opts.ang_PID.value_or(df_move_opts.ang_PID.value_or(Gains{100.0, 0.0, 0.0})));
 
-        // run control loop
-        while(true) {
-            // get current position
-            pose = odom.get();
+    bool thru = opts.thru.value_or(df_move_opts.thru.value_or(false));
+    bool relative = opts.relative.value_or(df_move_opts.relative.value_or(false));
 
-            // calculate error
-            double lin_error = pose.dist(target);
-            double ang_error = pose.angle(target);
+    // set up variables
+    double dt = 0.01; // 10 ms
+    Pose pose = odom.get();
+    if (relative) target = pose.p() + target.rotate(pose.theta);
 
-            // calculate PID
-            double lin_output = lin_PID.update(lin_error, dt);
-            double ang_output = ang_PID.update(ang_error, dt);
+    // run control loop
+    while(true) {
+        // get current position
+        pose = odom.get();
 
-            // apply limits
-            lin_output = lin_output > speed ? speed : lin_output < -speed ? -speed : lin_output;
-            ang_output = 
+        // calculate error
+        double lin_error = pose.dist(target);
+        double ang_error = pose.angle(target);
+
+        // calculate PID
+        double lin_output = lin_PID.update(lin_error, dt);
+        double ang_output = ang_PID.update(ang_error, dt);
+
+        // apply limits
+        lin_output = lin_output > speed ? speed : lin_output < -speed ? -speed : lin_output;
+            ang_output = 0;
 
             // determine direction
             bool reverse = dir == REVERSE || (dir == AUTO && ang_output);
@@ -194,11 +205,11 @@ void Chassis::move(Point target, Options opts) {
             pros::delay((int)(dt * 1000));
         }
     });
+
     // wait if not asynchroneous
     if (!async) {
         chassis_task.join();
     }
-
 }
 
 
@@ -234,3 +245,6 @@ void Chassis::arcade(pros::Controller& controller) {
 void Chassis::stop() {
     tank(0, 0);
 }
+
+*/
+} // namespace dom

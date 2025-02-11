@@ -6,6 +6,8 @@
 #include <optional>
 #include <mutex>
 
+namespace dom {
+
 /* PID */
 class PID {
 	double kp, ki, kd;
@@ -23,7 +25,6 @@ class Odom {
 private:
 	Pose odom_pose;
 	pros::Mutex odom_mutex;
-	pros::Task odom_task;
 
 	pros::adi::Encoder x_tracker, y_tracker;
 	pros::Imu imu;
@@ -37,8 +38,6 @@ public:
 
 	void task();
 	void start();
-	void suspend();
-	void resume();
 
 	Pose get();
 	Pose getLocal();
@@ -47,6 +46,8 @@ public:
 	void set(double x, double y, double theta);
 	void setPoint(Point point);
 	void setPoint(double x, double y);
+	void setX(double x);
+	void setY(double y);
 	void setTheta(double theta);
 
 	void setOffset(Point linear);
@@ -80,6 +81,7 @@ public:
 	 */
 	void move(Point target, Options options = {});
 	void move(double target, Options options = {});
+	void moveTask(Point target, Options options = {});
 	void turn(Point target, Options options = {});
 	void turn(double target, Options options = {});
 
@@ -90,3 +92,4 @@ public:
 	void arcade(pros::Controller& controller);
 	void stop();
 };
+} // namespace dom

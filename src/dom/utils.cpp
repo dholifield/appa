@@ -1,6 +1,9 @@
 #include "dom.h"
-
+namespace dom {
+    
 /* Utils */
-double toRad(double deg) { return deg * M_PI / 180; }
-double toDeg(double rad) { return rad * 180 / M_PI; }
+double to_rad(double deg) { return deg * M_PI / 180; }
+double to_deg(double rad) { return rad * 180 / M_PI; }
+
+} // namespace dom
 
