@@ -116,7 +116,8 @@ void Odom::set_offset(Point linear) {
 }
 
 void Odom::debug() {
-    printf("odom_task priority: %d\n", odom_task->get_priority());
+    if (odom_task)
+        printf("odom_task priority: %d\n", odom_task->get_priority());
     Pose pose = get();
     printf("x: %.2f, y: %.2f, theta: %.2f\n", pose.x, pose.y, to_deg(pose.theta));
 }

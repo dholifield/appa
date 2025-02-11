@@ -20,8 +20,8 @@ dom::Options turn_options = {.exit = 2.0,		// degrees
 							 .accel = 50,		// %/s
 							 .ang_PID = dom::Gains{0, 0, 0} };	// angular pid gains
 
-dom::Chassis bot({1, 2, 3, 4},	 // left motors
-				 {5, 6, 7, 8},	 // right motors
+dom::Chassis bot({0, 0, 0, 0},	 // left motors
+				 {0, 0, 0, 0},	 // right motors
 				 odom,			 // odom
 				 move_options,	 // default move options
 				 turn_options ); // default turn options
@@ -52,7 +52,7 @@ void opcontrol() {
 	printf("opcontrol started\n");
 
 	while (true) {
-		// bot.arcade(master);
+		bot.arcade(master);
 		odom.debug();
 		pros::delay(10);
 	}

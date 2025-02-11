@@ -64,7 +64,7 @@ void Chassis::move_task(Point target, Options opts) {
     uint32_t now = pros::millis();
 
     // control loop
-    while(lin_error > exit && (timeout != 0 && pros::millis() - start_time < timeout)) {
+    while(lin_error > exit && pros::millis() - start_time < timeout) {
         // calculate error
         pose = odom.get();
         lin_error = pose.dist(target);
@@ -78,8 +78,7 @@ void Chassis::move_task(Point target, Options opts) {
         if (dir == REVERSE) ang_error = M_PI - ang_error;
 
         // calculate PID
-        if (thru) lin_speed = speed;
-        else lin_speed = lin_PID.update(lin_error, dt);
+        lin_speed = thru ? speed : lin_PID.update(lin_error, dt);
         ang_speed = ang_PID.update(ang_error, dt);
 
         // apply limits
@@ -99,8 +98,8 @@ void Chassis::move_task(Point target, Options opts) {
             left_speed *= speed / right_speed;
         }
 
-        // limit acceleration
-
+        // accelerate
+        
 
         // set motor speeds
         tank(left_speed, right_speed);
@@ -170,3 +169,11 @@ void Chassis::set_brake_mode(pros::motor_brake_mode_e_t mode) {
 }
 
 } // namespace dom
+
+/**
+ * TODO: ignore timeout if equal to 0
+ * TODO: add settle time
+ * TODO: implement accel
+ * TODO: implement settle exit for stuck robot
+ * TODO: implement turn_task
+ * /

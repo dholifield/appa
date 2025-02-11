@@ -112,3 +112,7 @@ double to_deg(double rad);
 double limit(double val, double limit);
 
 }
+
+/**
+ * TODO: make it do you can do `.lin_PID = {0, 0, 0}` instead of `.lin_PID = dom::Gains{0, 0, 0}`
+ */
