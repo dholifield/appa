@@ -56,18 +56,6 @@ private:
 	pros::Mutex chassis_mutex;
 	std::atomic<bool> is_driving{false};
 
-
-	// enum MovementType { NONE, MOVE, TURN };
-
-	// struct ChassisCommand {
-	// 	MovementType type;
-	// 	Point point_target;
-	// 	double target;
-	// 	Options options;
-	// };
-
-	// ChassisCommand current_cmd;
-
 public:
 	Chassis(
 		std::initializer_list<int8_t> left_motors,
