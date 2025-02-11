@@ -1,35 +1,34 @@
 #include "main.h"
 
-dom::Odom odom({1, 3, 4}, {1, 1, 2}, 13, 321.5, {5, 0}, 45);
+dom::Odom odom({1, 3},	// x tracker
+			   {1, 1},	// y tracker
+			   13,		// imu
+			   321.5,	// tpi
+			   {5, 0},	// tracker linear offset
+			   45 );	// tracker angular offset
 
-// dom::Options move_options = {.exit = 1.0,	// inches
-// 						.settle = 100,		// ms
-// 						.timeout = 10000,	// ms
-// 						.speed = 85,		// %
-// 						.accel = 50,		// %/s
-// 						.lin_PID = Gains{1, 1, 1},
-// 						.ang_PID = Gains{1, 1, 1}
-// 					};
+dom::Options move_options = {.exit = 1.0,		// inches
+							 .timeout = 5000,	// ms
+							 .speed = 85,		// %
+							 .accel = 50,		// %/s
+							 .lin_PID = dom::Gains{0, 0, 0},	// linear pid gains
+							 .ang_PID = dom::Gains{0, 0, 0} };	// angular pid gains
 
+dom::Options turn_options = {.exit = 2.0,		// degrees
+							 .timeout = 5000,	// ms
+							 .speed = 50,		// %
+							 .accel = 50,		// %/s
+							 .ang_PID = dom::Gains{0, 0, 0} };	// angular pid gains
 
-// dom::Options turn_options = {.exit = 2.0,	// degrees
-// 						.settle = 100,		// ms
-// 						.timeout = 5000,	// ms
-// 						.speed = 50,		// %
-// 						.accel = 50,		// %/s
-// 						.ang_PID = Gains{1, 1, 1}
-// 					};
-
-
-// dom::Chassis bot({1, 2, 3, 4},
-// 			{5, 6, 7, 8},
-// 			odom,
-// 			move_options,
-// 			turn_options
-// 		);
+dom::Chassis bot({1, 2, 3, 4},	 // left motors
+				 {5, 6, 7, 8},	 // right motors
+				 odom,			 // odom
+				 move_options,	 // default move options
+				 turn_options ); // default turn options
 
 void initialize() {
 	odom.start();
+	bot.init();
 }
 
 void disabled() {}
@@ -37,8 +36,8 @@ void disabled() {}
 void competition_initialize() {}
 
 void autonomous() {
-	// odom.reset(45, 10, 90);
-	// bot.move({45, 80}, {.speed = 100, .lin_PID = Gains{5, 1, 0}, .async = true});
+	// odom.set(45, 10, 90);
+	// bot.move({45, 80}, {.speed = 100, .lin_PID = dom::Gains{5, 1, 0}, .async = true});
 	// // do something while driving
 	// bot.wait();
 	// bot.move({45, 20});

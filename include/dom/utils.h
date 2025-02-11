@@ -4,6 +4,20 @@
 
 namespace dom {
 
+/* PID */
+struct Gains { double p, i, d; };
+
+class PID {
+	Gains k;
+	double prev_error, total_error;
+
+public:
+	PID(Gains k);
+	PID(double kp, double ki, double kd);
+	void reset(double error = 0.0);
+	double update(double error, int dt);
+};
+
 // Utils //
 enum Direction {
 	FORWARD = 1,
@@ -13,13 +27,11 @@ enum Direction {
 	CW = -1
 };
 
-struct Gains { double p, i, d; };
-
 struct Options {
 	std::optional<Direction> dir;
 
 	std::optional<double> exit;
-	std::optional<int> settle;
+	// std::optional<int> settle;
 	std::optional<int> timeout;
 
 	std::optional<double> speed;
@@ -91,12 +103,12 @@ struct Pose {
 		return sqrt(diff.x * diff.x + diff.y * diff.y);
 	}
 	double angle(const Point& other) const {
-		Point diff = this->p() - other;
-		return std::fmod(atan2(diff.y, diff.x) - this->theta, M_PI);
+		return p().angle(other, theta);
 	}
 };
 
 double to_rad(double deg);
 double to_deg(double rad);
+double limit(double val, double limit);
 
 }

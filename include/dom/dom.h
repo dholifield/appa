@@ -8,23 +8,12 @@
 
 namespace dom {
 
-/* PID */
-class PID {
-	double kp, ki, kd;
-	double prev_error, total_error;
-
-public:
-	PID(double kp, double ki, double kd);
-	PID(Gains k);
-	void reset(double error = 0.0);
-	double update(double error, double dt);
-};
-
 /* Odom */
 class Odom {
 private:
 	Pose odom_pose;
 	pros::Mutex odom_mutex;
+	pros::Task* odom_task = nullptr;
 
 	pros::adi::Encoder x_tracker, y_tracker;
 	pros::Imu imu;
@@ -35,23 +24,23 @@ private:
 
 public:
 	Odom(int x_port, int y_port, int imu_port, int tpi, Point tracker_linear_offset, double tracker_angular_offset);
-	Odom(std::tuple<int8_t, int8_t, int8_t> x_port, std::tuple<int8_t, int8_t, int8_t> y_port, int imu_port, int tpi, Point tracker_linear_offset, double tracker_angular_offset);
+	Odom(std::array<int8_t, 2> x_port, std::array<int8_t, 2> y_port, int imu_port, int tpi, Point tracker_linear_offset, double tracker_angular_offset);
 
 	void task();
 	void start();
 
 	Pose get();
-	Pose getLocal();
+	Pose get_local();
 	void set(Pose pose);
 	void set(Point point, double theta);
 	void set(double x, double y, double theta);
-	void setPoint(Point point);
-	void setPoint(double x, double y);
-	void setX(double x);
-	void setY(double y);
-	void setTheta(double theta);
+	void set_point(Point point);
+	void set_point(double x, double y);
+	void set_x(double x);
+	void set_y(double y);
+	void set_theta(double theta);
 
-	void setOffset(Point linear);
+	void set_offset(Point linear);
 
 	void debug();
 };
@@ -63,8 +52,21 @@ private:
 	Odom& odom;
 	Options df_move_opts, df_turn_opts;
 
-	pros::Task chassis_task;
+	pros::Task* chassis_task = nullptr;
+	pros::Mutex chassis_mutex;
 	std::atomic<bool> is_driving{false};
+
+
+	// enum MovementType { NONE, MOVE, TURN };
+
+	// struct ChassisCommand {
+	// 	MovementType type;
+	// 	Point point_target;
+	// 	double target;
+	// 	Options options;
+	// };
+
+	// ChassisCommand current_cmd;
 
 public:
 	Chassis(
@@ -74,23 +76,24 @@ public:
 		Options default_move_options,
 		Options default_turn_ptions
 	);
+	~Chassis();
 
-	/**
-	 * Move the robot to a point or a distance ahead
-	 * @param target target distance or point
-	 * @param options additional options
-	 */
+	void init();
+	void task();
+	void wait();
+
+	void move_task(Point target, Options options);
 	void move(Point target, Options options = {});
 	void move(double target, Options options = {});
-	void moveTask(Point target, Options options = {});
+	void turn_task(Point target, Options options);
 	void turn(Point target, Options options = {});
 	void turn(double target, Options options = {});
-
-	void wait();
 
 	void tank(double left_speed, double right_speed);
 	void arcade(double linear, double angular);
 	void arcade(pros::Controller& controller);
 	void stop();
+
+	void set_brake_mode(pros::motor_brake_mode_e_t mode);
 };
 } // namespace dom
