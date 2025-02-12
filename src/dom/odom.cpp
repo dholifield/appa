@@ -3,44 +3,43 @@
 namespace dom {
 
 /* Odom */
-Odom::Odom(int8_t x_port, int8_t y_port, int8_t imu_port, int tpi, Point tracker_linear_offset, double tracker_angular_offset) :
-        x_tracker(abs(x_port), abs(x_port) + 1, x_port < 0),
-        y_tracker(abs(y_port), abs(y_port) + 1, y_port < 0),
-        imu(imu_port),
-        tpi(tpi),
-        tracker_linear_offset(tracker_linear_offset),
-        tracker_angular_offset(to_rad(tracker_angular_offset)) {}
+Odom::Odom(int8_t x_port, int8_t y_port, int8_t imu_port, int tpi, Point tracker_linear_offset,
+           double tracker_angular_offset)
+    : x_tracker(abs(x_port), abs(x_port) + 1, x_port < 0),
+      y_tracker(abs(y_port), abs(y_port) + 1, y_port < 0),
+      imu(imu_port),
+      tpi(tpi),
+      tracker_linear_offset(tracker_linear_offset),
+      tracker_angular_offset(to_rad(tracker_angular_offset)) {}
 
-Odom::Odom(std::array<int8_t, 2> x_port, std::array<int8_t, 2> y_port, int8_t imu_port, int tpi, Point tracker_linear_offset, double tracker_angular_offset) :
-        x_tracker({x_port[0], abs(x_port[1]), abs(x_port[1]) + 1}, x_port[1] < 0),
-        y_tracker({y_port[0], abs(y_port[1]), abs(y_port[1]) + 1}, y_port[1] < 0),
-        imu(imu_port),
-        tpi(tpi),
-        tracker_linear_offset(tracker_linear_offset),
-        tracker_angular_offset(to_rad(tracker_angular_offset)) {}
+Odom::Odom(std::array<int8_t, 2> x_port, std::array<int8_t, 2> y_port, int8_t imu_port, int tpi,
+           Point tracker_linear_offset, double tracker_angular_offset)
+    : x_tracker({x_port[0], abs(x_port[1]), abs(x_port[1]) + 1}, x_port[1] < 0),
+      y_tracker({y_port[0], abs(y_port[1]), abs(y_port[1]) + 1}, y_port[1] < 0),
+      imu(imu_port),
+      tpi(tpi),
+      tracker_linear_offset(tracker_linear_offset),
+      tracker_angular_offset(to_rad(tracker_angular_offset)) {}
 
 void Odom::task() {
     printf("odom task started\n");
-    Pose prev_track = {0, 0, 0};
+    Pose prev_track = (0, 0, 0);
     uint32_t now = pros::millis();
 
-    while(true) {
+    while (true) {
         // get current sensor values
-        Pose track = {x_tracker.get_value() / tpi,
-                      y_tracker.get_value() / tpi,
-                      to_rad(-imu.get_rotation())};
+        Pose track =
+            (x_tracker.get_value() / tpi, y_tracker.get_value() / tpi, to_rad(-imu.get_rotation()));
 
         // calculate change in sensor values
-        Point dtrack = {track.x - prev_track.x,
-                        track.y - prev_track.y};
+        Point dtrack = {track.x - prev_track.x, track.y - prev_track.y};
         double dtheta = track.theta - prev_track.theta;
 
         // set previous sensor values for next loop
         prev_track = track;
-        
+
         // arc approximation
-        if (dtheta != 0)
-            dtrack *= 2 * sin(dtheta / 2) / dtheta;
+        if (dtheta != 0) dtrack *= 2 * sin(dtheta / 2) / dtheta;
 
         // rotate tracker differential to global frame
         dtrack = dtrack.rotate(track.theta + tracker_angular_offset);
@@ -50,7 +49,7 @@ void Odom::task() {
         odom_pose += dtrack;
         odom_pose.theta = track.theta;
         odom_mutex.give();
-        
+
         // loop every 5 ms
         pros::c::task_delay_until(&now, 5);
     }
@@ -58,11 +57,16 @@ void Odom::task() {
 
 void Odom::start() {
     printf("calibrating imu... ");
-    imu.reset(true);
+    int rtn = imu.reset(true);
+    if (rtn != 1) {
+        printf("\nERROR: IMU reset failed with error code %d\n", errno);
+        printf("odometry was not started\n");
+        return;
+    }
     imu.set_data_rate(5);
     printf("done\n");
 
-    set({0, 0, 0});
+    set((0, 0, 0));
     if (odom_task == nullptr)
         odom_task = new pros::Task([this] { task(); }, 16, TASK_STACK_DEPTH_DEFAULT, "odom_task");
 }
@@ -106,9 +110,9 @@ void Odom::set_theta(double theta) {
     odom_pose.theta = theta;
 }
 
-void Odom::set(Point point, double theta) { set({point.x, point.y, theta}); }
-void Odom::set(double x, double y, double theta) { set({x, y, theta}); }
-void Odom::set_point(double x, double y) { set_point({x, y}); }
+void Odom::set(Point point, double theta) { set((point.x, point.y, theta)); }
+void Odom::set(double x, double y, double theta) { set((x, y, theta)); }
+void Odom::set_point(double x, double y) { set_point((x, y)); }
 
 void Odom::set_offset(Point linear) {
     std::lock_guard<pros::Mutex> lock(odom_mutex);
@@ -117,7 +121,7 @@ void Odom::set_offset(Point linear) {
 
 void Odom::debug() {
     // if (odom_task)
-        // printf("odom_task priority: %d\n", odom_task->get_priority());
+    //     printf("odom_task priority: %d\n", odom_task->get_priority());
     Pose pose = get();
     printf("x: %.2f, y: %.2f, theta: %.2f\n", pose.x, pose.y, to_deg(pose.theta));
 }

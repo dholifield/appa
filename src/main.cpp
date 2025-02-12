@@ -1,33 +1,34 @@
 #include "main.h"
 
-dom::Odom odom({2, 3},	// x tracker
-			   {2, 1},	// y tracker
-			   13,		// imu
-			   321.5,	// tpi
-			   {5, 0},	// tracker linear offset
-			   45 );	// tracker angular offset
+dom::Odom odom({2, 3}, // x tracker
+               {2, 1}, // y tracker
+               13,     // imu
+               321.5,  // tpi
+               {5, 0}, // tracker linear offset
+               45);    // tracker angular offset
 
-dom::Options move_options = {.exit = 1.0,		// inches
-							 .timeout = 5000,	// ms
-							 .speed = 85,		// %
-							 .accel = 50,		// %/s
-							 .lin_PID = (10, 0, 0),		// linear pid gains
-							 .ang_PID = (50, 0, 0) };	// angular pid gains
+dom::Options move_options = {.exit = 1.0,            // inches
+                             .timeout = 5000,        // ms
+                             .speed = 85,            // %
+                             .accel = 50,            // %/s
+                             .lin_PID = (10, 0, 0),  // linear pid gains
+                             .ang_PID = (50, 0, 0)}; // angular pid gains
 
-dom::Options turn_options = {.exit = 2.0,		// degrees
-							 .timeout = 5000,	// ms
-							 .speed = 50,		// %
-							 .accel = 50,		// %/s
-							 .ang_PID = (0, 0, 0) };	// angular pid gains
+dom::Options turn_options = {.exit = 2.0,           // degrees
+                             .timeout = 5000,       // ms
+                             .speed = 50,           // %
+                             .accel = 50,           // %/s
+                             .ang_PID = (0, 0, 0)}; // angular pid gains
 
-dom::Chassis bot({-10, -9, 8, 3, -1},	// left motors
-				 {17, 19, -18, -12, 11},// right motors
-				 odom,			 		// odom
-				 move_options,	 		// default move options
-				 turn_options ); 		// default turn options
+dom::Chassis bot({-10, -9, 8, 3, -1},    // left motors
+                 {17, 19, -18, -12, 11}, // right motors
+                 odom,                   // odom
+                 move_options,           // default move options
+                 turn_options);          // default turn options
 
 void initialize() {
-	odom.start();
+    // start odometry
+    odom.start();
 }
 
 void disabled() {}
@@ -35,29 +36,23 @@ void disabled() {}
 void competition_initialize() {}
 
 void autonomous() {
-	bot.set_brake_mode(pros::E_MOTOR_BRAKE_HOLD);
-	// odom.set(45, 10, 90);
-	// bot.move({45, 80}, {.speed = 100, .lin_PID = (5, 1, 0), .async = true});
-	// // do something while driving
-	// bot.wait();
-	// bot.move({45, 20});
+    printf("autonomous started\n");
+    bot.set_brake_mode(pros::E_MOTOR_BRAKE_HOLD);
+    odom.set(0, 0, 90);
+    bot.move((0, 24), {.speed = 100});
 
-	// bot.turn({20, 20});
-	// bot.move({20, 20}, {.speed = 80});
-	// bot.move(-10, {.speed = 20});
-
-	bot.set_brake_mode(pros::E_MOTOR_BRAKE_COAST);
+    bot.set_brake_mode(pros::E_MOTOR_BRAKE_COAST);
 }
 
 void opcontrol() {
-	pros::Controller master(pros::E_CONTROLLER_MASTER);
-	bot.set_brake_mode(pros::E_MOTOR_BRAKE_COAST);
-	printf("opcontrol started\n");
+    pros::Controller master(pros::E_CONTROLLER_MASTER);
+    bot.set_brake_mode(pros::E_MOTOR_BRAKE_COAST);
+    printf("opcontrol started\n");
 
-	while (true) {
-		if (master.get_digital(pros::E_CONTROLLER_DIGITAL_A)) autonomous();
-		bot.arcade(master);
-		// odom.debug();
-		pros::delay(10);
-	}
+    while (true) {
+        if (master.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_A)) autonomous();
+        bot.arcade(master);
+        // odom.debug();
+        pros::delay(10);
+    }
 }

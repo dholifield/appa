@@ -4,24 +4,18 @@ namespace dom {
 
 /* Chassis */
 Chassis::Chassis(std::initializer_list<int8_t> left_motors,
-                 std::initializer_list<int8_t> right_motors,
-                 Odom& odom,
-                 Options default_move_options,
-                 Options default_turn_options)
+                 std::initializer_list<int8_t> right_motors, Odom& odom,
+                 Options default_move_options, Options default_turn_options)
     : left_motors(left_motors),
       right_motors(right_motors),
       odom(odom),
       df_move_opts(default_move_options),
       df_turn_opts(default_turn_options) {}
-      
-Chassis::~Chassis() {
-    stop(true);
-}
+
+Chassis::~Chassis() { stop(true); }
 
 void Chassis::wait() {
-    if (chassis_task) {
-        chassis_task->join();
-    }
+    if (chassis_task) { chassis_task->join(); }
 }
 
 void Chassis::move_task(Point target, Options opts) {
@@ -50,7 +44,7 @@ void Chassis::move_task(Point target, Options opts) {
 
     double lin_speed, ang_speed;
     Point speeds;
-    
+
     // if relative motion
     if (relative) target = pose.p() + target.rotate(pose.theta);
 
@@ -62,17 +56,18 @@ void Chassis::move_task(Point target, Options opts) {
     double accel_step = accel * dt / 1000;
 
     // control loop
-    while(true) {
+    while (true) {
         // calculate error
         pose = odom.get();
 
-        error = (pose.dist(target), 
-                 pose.angle(target));
+        error = (pose.dist(target), pose.angle(target));
 
         // determine direction
         if (auto_dir) {
-            if (fabs(error.angular) > M_PI_2) dir = REVERSE;
-            else dir = FORWARD;
+            if (fabs(error.angular) > M_PI_2)
+                dir = REVERSE;
+            else
+                dir = FORWARD;
         }
         if (dir == REVERSE) error.angular = M_PI - error.angular;
 
@@ -88,7 +83,7 @@ void Chassis::move_task(Point target, Options opts) {
         speeds = (lin_speed - ang_speed, lin_speed + ang_speed);
 
         // scale motor speeds
-        if (speeds.left > max_speed) { 
+        if (speeds.left > max_speed) {
             speeds.left = max_speed;
             speeds.right *= max_speed / speeds.left;
         }
@@ -98,8 +93,10 @@ void Chassis::move_task(Point target, Options opts) {
         }
 
         // limit acceleration
-        if (speeds.left - prev_speeds.left > accel_step) speeds.left = prev_speeds.left + accel_step;
-        if (speeds.right - prev_speeds.right > accel_step) speeds.right = prev_speeds.right + accel_step;
+        if (speeds.left - prev_speeds.left > accel_step)
+            speeds.left = prev_speeds.left + accel_step;
+        if (speeds.right - prev_speeds.right > accel_step)
+            speeds.right = prev_speeds.right + accel_step;
 
         // set motor speeds
         tank(speeds);
@@ -116,13 +113,15 @@ void Chassis::move_task(Point target, Options opts) {
 
 void Chassis::move(Point target, Options opts) {
     // stop task if robot is already moving
-    if (chassis_task)
+    if (chassis_task) {
         chassis_task->remove();
         delete chassis_task;
+    }
 
     // start task
     if (opts.async.value_or(df_move_opts.async.value_or(false))) {
-        chassis_task = new pros::Task([this, target, opts] { move_task(target, opts); }, "chassis_task");
+        chassis_task =
+            new pros::Task([this, target, opts] { move_task(target, opts); }, "chassis_task");
     } else {
         move_task(target, opts);
     }
@@ -156,7 +155,7 @@ void Chassis::turn_task(double target, Options opts) {
 
     double ang_speed;
     Point speeds;
-    
+
     // if relative motion
     if (relative) target += heading;
 
@@ -168,15 +167,17 @@ void Chassis::turn_task(double target, Options opts) {
     double accel_step = accel * dt / 1000;
 
     // control loop
-    while(true) {
+    while (true) {
         // calculate error
         heading = odom.get().theta;
 
         error = std::fmod(heading - target, M_PI);
 
         // determine direction
-        if (dir == CW && error > 0) error -= 2 * M_PI;
-        else if (dir == CCW && error < 0) error += 2 * M_PI;
+        if (dir == CW && error > 0)
+            error -= 2 * M_PI;
+        else if (dir == CCW && error < 0)
+            error += 2 * M_PI;
 
         // calculate PID
         ang_speed = thru ? (error > 0 ? max_speed : -max_speed) : ang_PID.update(error, dt);
@@ -188,7 +189,7 @@ void Chassis::turn_task(double target, Options opts) {
         speeds = (-ang_speed, ang_speed);
 
         // scale motor speeds
-        if (speeds.left > max_speed) { 
+        if (speeds.left > max_speed) {
             speeds.left = max_speed;
             speeds.right *= max_speed / speeds.left;
         }
@@ -198,8 +199,10 @@ void Chassis::turn_task(double target, Options opts) {
         }
 
         // limit acceleration
-        if (speeds.left - prev_speeds.left > accel_step) speeds.left = prev_speeds.left + accel_step;
-        if (speeds.right - prev_speeds.right > accel_step) speeds.right = prev_speeds.right + accel_step;
+        if (speeds.left - prev_speeds.left > accel_step)
+            speeds.left = prev_speeds.left + accel_step;
+        if (speeds.right - prev_speeds.right > accel_step)
+            speeds.right = prev_speeds.right + accel_step;
 
         // set motor speeds
         tank(speeds);
@@ -216,21 +219,21 @@ void Chassis::turn_task(double target, Options opts) {
 
 void Chassis::turn(double target, Options opts) {
     // stop task if robot is already moving
-    if (chassis_task)
+    if (chassis_task) {
         chassis_task->remove();
         delete chassis_task;
+    }
 
     // start task
     if (opts.async.value_or(df_turn_opts.async.value_or(false))) {
-        chassis_task = new pros::Task([this, target, opts] { turn_task(target, opts); }, "chassis_task");
+        chassis_task =
+            new pros::Task([this, target, opts] { turn_task(target, opts); }, "chassis_task");
     } else {
         turn_task(target, opts);
     }
 }
 
-void Chassis::turn(Point target, Options options) {
-    turn(odom.get().p().angle(target), options);
-}
+void Chassis::turn(Point target, Options options) { turn(odom.get().p().angle(target), options); }
 
 void Chassis::tank(double left_speed, double right_speed) {
     left_motors.move_voltage(left_speed * 120);
@@ -239,9 +242,7 @@ void Chassis::tank(double left_speed, double right_speed) {
     prev_speeds = (left_speed, right_speed);
 }
 
-void Chassis::tank(Point speeds) {
-    tank(speeds.left, speeds.right);
-}
+void Chassis::tank(Point speeds) { tank(speeds.left, speeds.right); }
 
 void Chassis::tank(pros::Controller& controller) {
     double left_speed = controller.get_analog(pros::E_CONTROLLER_ANALOG_LEFT_Y);
