@@ -78,6 +78,7 @@ struct Point {
 		return std::fmod(atan2(diff.y, diff.x) - offset, M_PI);
 	}
 	Point rotate(const double theta) const {
+		if (theta == 0) return *this;
     	return {x * cos(theta) - y * sin(theta),
         		x * sin(theta) + y * cos(theta)};
 	}
