@@ -47,10 +47,10 @@ struct Options {
 
 struct Point {
 	union {
-        struct { double x, y; };
-        struct { double left, right; };
-        struct { double linear, angular; };
-    };
+		struct { double x, y; };
+		struct { double left, right; };
+		struct { double linear, angular; };
+	};
 
 	Point(double x = 0, double y = 0) : x(x), y(y) {}
 

@@ -11,7 +11,7 @@ namespace dom {
 /* Odom */
 class Odom {
 private:
-	Pose odom_pose;
+	Pose odom_pose = {0, 0, 0};
 	pros::Mutex odom_mutex;
 	pros::Task* odom_task = nullptr;
 
@@ -67,22 +67,22 @@ public:
 	);
 	~Chassis();
 
-	void init();
 	void task();
 	void wait();
 
 	void move_task(Point target, Options options);
 	void move(Point target, Options options = {});
 	void move(double target, Options options = {});
-	void turn_task(Point target, Options options);
+	void turn_task(double target, Options options);
 	void turn(Point target, Options options = {});
 	void turn(double target, Options options = {});
 
 	void tank(double left_speed, double right_speed);
 	void tank(Point speeds);
+	void tank(pros::Controller& controller);
 	void arcade(double linear, double angular);
 	void arcade(pros::Controller& controller);
-	void stop();
+	void stop(bool stop_task = true);
 
 	void set_brake_mode(pros::motor_brake_mode_e_t mode);
 };

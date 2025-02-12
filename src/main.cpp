@@ -8,7 +8,7 @@ dom::Odom odom({2, 3},	// x tracker
 			   45 );	// tracker angular offset
 
 dom::Options move_options = {.exit = 1.0,		// inches
-							 .timeout = 0,	// ms
+							 .timeout = 5000,	// ms
 							 .speed = 85,		// %
 							 .accel = 50,		// %/s
 							 .lin_PID = dom::Gains{10, 0, 0},	// linear pid gains
@@ -28,7 +28,6 @@ dom::Chassis bot({-10, -9, 8, 3, -1},	// left motors
 
 void initialize() {
 	odom.start();
-	bot.init();
 }
 
 void disabled() {}
@@ -36,6 +35,7 @@ void disabled() {}
 void competition_initialize() {}
 
 void autonomous() {
+	bot.set_brake_mode(pros::E_MOTOR_BRAKE_HOLD);
 	// odom.set(45, 10, 90);
 	// bot.move({45, 80}, {.speed = 100, .lin_PID = dom::Gains{5, 1, 0}, .async = true});
 	// // do something while driving
@@ -49,6 +49,7 @@ void autonomous() {
 
 void opcontrol() {
 	pros::Controller master(pros::E_CONTROLLER_MASTER);
+	bot.set_brake_mode(pros::E_MOTOR_BRAKE_COAST);
 	printf("opcontrol started\n");
 
 	while (true) {
