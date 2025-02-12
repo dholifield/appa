@@ -11,14 +11,14 @@ dom::Options move_options = {.exit = 1.0,		// inches
 							 .timeout = 5000,	// ms
 							 .speed = 85,		// %
 							 .accel = 50,		// %/s
-							 .lin_PID = dom::Gains{10, 0, 0},	// linear pid gains
-							 .ang_PID = dom::Gains{50, 0, 0} };	// angular pid gains
+							 .lin_PID = (10, 0, 0),		// linear pid gains
+							 .ang_PID = (50, 0, 0) };	// angular pid gains
 
 dom::Options turn_options = {.exit = 2.0,		// degrees
 							 .timeout = 5000,	// ms
 							 .speed = 50,		// %
 							 .accel = 50,		// %/s
-							 .ang_PID = dom::Gains{0, 0, 0} };	// angular pid gains
+							 .ang_PID = (0, 0, 0) };	// angular pid gains
 
 dom::Chassis bot({-10, -9, 8, 3, -1},	// left motors
 				 {17, 19, -18, -12, 11},// right motors
@@ -37,7 +37,7 @@ void competition_initialize() {}
 void autonomous() {
 	bot.set_brake_mode(pros::E_MOTOR_BRAKE_HOLD);
 	// odom.set(45, 10, 90);
-	// bot.move({45, 80}, {.speed = 100, .lin_PID = dom::Gains{5, 1, 0}, .async = true});
+	// bot.move({45, 80}, {.speed = 100, .lin_PID = (5, 1, 0), .async = true});
 	// // do something while driving
 	// bot.wait();
 	// bot.move({45, 20});
@@ -45,6 +45,8 @@ void autonomous() {
 	// bot.turn({20, 20});
 	// bot.move({20, 20}, {.speed = 80});
 	// bot.move(-10, {.speed = 20});
+
+	bot.set_brake_mode(pros::E_MOTOR_BRAKE_COAST);
 }
 
 void opcontrol() {
@@ -53,6 +55,7 @@ void opcontrol() {
 	printf("opcontrol started\n");
 
 	while (true) {
+		if (master.get_digital(pros::E_CONTROLLER_DIGITAL_A)) autonomous();
 		bot.arcade(master);
 		// odom.debug();
 		pros::delay(10);

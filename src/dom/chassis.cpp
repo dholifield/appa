@@ -36,8 +36,8 @@ void Chassis::move_task(Point target, Options opts) {
     double max_speed = opts.speed.value_or(df_move_opts.speed.value_or(100));
     double accel = opts.accel.value_or(df_move_opts.accel.value_or(50));
 
-    PID lin_PID(opts.lin_PID.value_or(df_move_opts.lin_PID.value_or(Gains{10, 0, 0})));
-    PID ang_PID(opts.ang_PID.value_or(df_move_opts.ang_PID.value_or(Gains{50, 0, 0})));
+    PID lin_PID(opts.lin_PID.value_or(df_move_opts.lin_PID.value_or((10, 0, 0))));
+    PID ang_PID(opts.ang_PID.value_or(df_move_opts.ang_PID.value_or((50, 0, 0))));
 
     bool thru = opts.thru.value_or(df_move_opts.thru.value_or(false));
     bool relative = opts.relative.value_or(df_move_opts.relative.value_or(false));
@@ -144,7 +144,7 @@ void Chassis::turn_task(double target, Options opts) {
     double max_speed = opts.speed.value_or(df_turn_opts.speed.value_or(100));
     double accel = opts.accel.value_or(df_turn_opts.accel.value_or(50));
 
-    PID ang_PID(opts.ang_PID.value_or(df_turn_opts.ang_PID.value_or(Gains{50, 0, 0})));
+    PID ang_PID(opts.ang_PID.value_or(df_turn_opts.ang_PID.value_or((50, 0, 0))));
 
     bool thru = opts.thru.value_or(df_turn_opts.thru.value_or(false));
     bool relative = opts.relative.value_or(df_turn_opts.relative.value_or(false));
@@ -269,7 +269,6 @@ void Chassis::stop(bool stop_task) {
     }
     tank(0, 0);
 }
-
 
 void Chassis::set_brake_mode(pros::motor_brake_mode_e_t mode) {
     left_motors.set_brake_mode(mode);

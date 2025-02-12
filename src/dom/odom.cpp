@@ -3,21 +3,21 @@
 namespace dom {
 
 /* Odom */
-Odom::Odom(int x_port, int y_port, int imu_port, int tpi, Point tracker_linear_offset, double tracker_angular_offset) :
-        tpi(tpi),
-        tracker_linear_offset(tracker_linear_offset),
-        tracker_angular_offset(to_rad(tracker_angular_offset)),
-        imu(imu_port),
+Odom::Odom(int8_t x_port, int8_t y_port, int8_t imu_port, int tpi, Point tracker_linear_offset, double tracker_angular_offset) :
         x_tracker(abs(x_port), abs(x_port) + 1, x_port < 0),
-        y_tracker(abs(y_port), abs(y_port) + 1, y_port < 0) {}
-
-Odom::Odom(std::array<int8_t, 2> x_port, std::array<int8_t, 2> y_port, int imu_port, int tpi, Point tracker_linear_offset, double tracker_angular_offset) :
+        y_tracker(abs(y_port), abs(y_port) + 1, y_port < 0),
+        imu(imu_port),
         tpi(tpi),
         tracker_linear_offset(tracker_linear_offset),
-        tracker_angular_offset(to_rad(tracker_angular_offset)),
-        imu(imu_port),
+        tracker_angular_offset(to_rad(tracker_angular_offset)) {}
+
+Odom::Odom(std::array<int8_t, 2> x_port, std::array<int8_t, 2> y_port, int8_t imu_port, int tpi, Point tracker_linear_offset, double tracker_angular_offset) :
         x_tracker({x_port[0], abs(x_port[1]), abs(x_port[1]) + 1}, x_port[1] < 0),
-        y_tracker({y_port[0], abs(y_port[1]), abs(y_port[1]) + 1}, y_port[1] < 0) {}
+        y_tracker({y_port[0], abs(y_port[1]), abs(y_port[1]) + 1}, y_port[1] < 0),
+        imu(imu_port),
+        tpi(tpi),
+        tracker_linear_offset(tracker_linear_offset),
+        tracker_angular_offset(to_rad(tracker_angular_offset)) {}
 
 void Odom::task() {
     printf("odom task started\n");
