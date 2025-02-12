@@ -52,7 +52,8 @@ class Chassis {
   private:
     pros::MotorGroup left_motors, right_motors;
     Odom& odom;
-    Options df_move_opts, df_turn_opts;
+    MoveConfig move_config;
+    TurnConfig turn_config;
     Point prev_speeds = (0.0, 0.0);
 
     pros::Task* chassis_task = nullptr;
@@ -61,7 +62,7 @@ class Chassis {
 
   public:
     Chassis(std::initializer_list<int8_t> left_motors, std::initializer_list<int8_t> right_motors,
-            Odom& odom, Options default_move_options, Options default_turn_ptions);
+            Odom& odom, MoveConfig move_config, TurnConfig turn_config);
     ~Chassis();
 
     void task();

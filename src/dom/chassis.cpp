@@ -4,13 +4,13 @@ namespace dom {
 
 /* Chassis */
 Chassis::Chassis(std::initializer_list<int8_t> left_motors,
-                 std::initializer_list<int8_t> right_motors, Odom& odom,
-                 Options default_move_options, Options default_turn_options)
+                 std::initializer_list<int8_t> right_motors, Odom& odom, MoveConfig move_config,
+                 TurnConfig turn_config)
     : left_motors(left_motors),
       right_motors(right_motors),
       odom(odom),
-      df_move_opts(default_move_options),
-      df_turn_opts(default_turn_options) {}
+      move_config(move_config),
+      turn_config(turn_config) {}
 
 Chassis::~Chassis() { stop(true); }
 
@@ -20,21 +20,21 @@ void Chassis::wait() {
 
 void Chassis::move_task(Point target, Options opts) {
     // set up variables
-    Direction dir = opts.dir.value_or(df_move_opts.dir.value_or(AUTO));
+    Direction dir = opts.dir.value_or(AUTO);
     bool auto_dir = dir == AUTO;
 
-    double exit = opts.exit.value_or(df_move_opts.exit.value_or(1.0));
+    double exit = opts.exit.value_or(move_config.exit);
     // int settle = opts.settle.value_or(df_move_opts.settle.value_or(250));
-    int timeout = opts.timeout.value_or(df_move_opts.timeout.value_or(10000));
+    int timeout = opts.timeout.value_or(move_config.timeout);
 
-    double max_speed = opts.speed.value_or(df_move_opts.speed.value_or(100));
-    double accel = opts.accel.value_or(df_move_opts.accel.value_or(50));
+    double max_speed = opts.speed.value_or(move_config.speed);
+    double accel = opts.accel.value_or(move_config.accel);
 
-    PID lin_PID(opts.lin_PID.value_or(df_move_opts.lin_PID.value_or((10, 0, 0))));
-    PID ang_PID(opts.ang_PID.value_or(df_move_opts.ang_PID.value_or((50, 0, 0))));
+    PID lin_PID(opts.lin_PID.value_or(move_config.lin_PID));
+    PID ang_PID(opts.ang_PID.value_or(move_config.ang_PID));
 
-    bool thru = opts.thru.value_or(df_move_opts.thru.value_or(false));
-    bool relative = opts.relative.value_or(df_move_opts.relative.value_or(false));
+    bool thru = opts.thru.value_or(false);
+    bool relative = opts.relative.value_or(false);
 
     Pose pose = odom.get();
     Point error = (pose.dist(target), pose.angle(target));
@@ -93,10 +93,12 @@ void Chassis::move_task(Point target, Options opts) {
         }
 
         // limit acceleration
-        if (speeds.left - prev_speeds.left > accel_step)
-            speeds.left = prev_speeds.left + accel_step;
-        if (speeds.right - prev_speeds.right > accel_step)
-            speeds.right = prev_speeds.right + accel_step;
+        if (accel_step) {
+            if (speeds.left - prev_speeds.left > accel_step)
+                speeds.left = prev_speeds.left + accel_step;
+            if (speeds.right - prev_speeds.right > accel_step)
+                speeds.right = prev_speeds.right + accel_step;
+        }
 
         // set motor speeds
         tank(speeds);
@@ -119,7 +121,7 @@ void Chassis::move(Point target, Options opts) {
     }
 
     // start task
-    if (opts.async.value_or(df_move_opts.async.value_or(false))) {
+    if (opts.async.value_or(false)) {
         chassis_task =
             new pros::Task([this, target, opts] { move_task(target, opts); }, "chassis_task");
     } else {
@@ -134,19 +136,19 @@ void Chassis::move(double target, Options options) {
 
 void Chassis::turn_task(double target, Options opts) {
     // set up variables
-    Direction dir = opts.dir.value_or(df_turn_opts.dir.value_or(AUTO));
+    Direction dir = opts.dir.value_or(AUTO);
 
-    double exit = opts.exit.value_or(df_turn_opts.exit.value_or(1.0));
+    double exit = opts.exit.value_or(turn_config.exit);
     // int settle = opts.settle.value_or(df_turn_opts.settle.value_or(250));
-    int timeout = opts.timeout.value_or(df_turn_opts.timeout.value_or(10000));
+    int timeout = opts.timeout.value_or(turn_config.timeout);
 
-    double max_speed = opts.speed.value_or(df_turn_opts.speed.value_or(100));
-    double accel = opts.accel.value_or(df_turn_opts.accel.value_or(50));
+    double max_speed = opts.speed.value_or(turn_config.speed);
+    double accel = opts.accel.value_or(turn_config.accel);
 
-    PID ang_PID(opts.ang_PID.value_or(df_turn_opts.ang_PID.value_or((50, 0, 0))));
+    PID ang_PID(opts.ang_PID.value_or(turn_config.ang_PID));
 
-    bool thru = opts.thru.value_or(df_turn_opts.thru.value_or(false));
-    bool relative = opts.relative.value_or(df_turn_opts.relative.value_or(false));
+    bool thru = opts.thru.value_or(false);
+    bool relative = opts.relative.value_or(false);
 
     double heading = odom.get().theta;
     double error = heading - target;
@@ -199,10 +201,12 @@ void Chassis::turn_task(double target, Options opts) {
         }
 
         // limit acceleration
-        if (speeds.left - prev_speeds.left > accel_step)
-            speeds.left = prev_speeds.left + accel_step;
-        if (speeds.right - prev_speeds.right > accel_step)
-            speeds.right = prev_speeds.right + accel_step;
+        if (accel_step) {
+            if (speeds.left - prev_speeds.left > accel_step)
+                speeds.left = prev_speeds.left + accel_step;
+            if (speeds.right - prev_speeds.right > accel_step)
+                speeds.right = prev_speeds.right + accel_step;
+        }
 
         // set motor speeds
         tank(speeds);
@@ -225,7 +229,7 @@ void Chassis::turn(double target, Options opts) {
     }
 
     // start task
-    if (opts.async.value_or(df_turn_opts.async.value_or(false))) {
+    if (opts.async.value_or(false)) {
         chassis_task =
             new pros::Task([this, target, opts] { turn_task(target, opts); }, "chassis_task");
     } else {

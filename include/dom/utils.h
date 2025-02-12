@@ -7,7 +7,7 @@ namespace dom {
 /* PID */
 struct Gains {
     double p, i, d;
-    Gains(double p = 0, double i = 0, double d = 0) : p(p), i(i), d(d) {}
+    Gains(double p, double i, double d) : p(p), i(i), d(d) {}
 };
 
 class PID {
@@ -40,6 +40,29 @@ struct Options {
     std::optional<bool> async;
     std::optional<bool> thru;
     std::optional<bool> relative;
+};
+
+struct MoveConfig {
+    double exit;
+    // double settle;
+    double timeout = 0;
+
+    double speed = 100;
+    double accel = 0;
+
+    Gains lin_PID;
+    Gains ang_PID;
+};
+
+struct TurnConfig {
+    double exit;
+    // double settle;
+    double timeout = 0;
+
+    double speed = 100;
+    double accel = 0;
+
+    Gains ang_PID;
 };
 
 struct Point {
