@@ -51,6 +51,7 @@ private:
 	pros::MotorGroup left_motors, right_motors;
 	Odom& odom;
 	Options df_move_opts, df_turn_opts;
+	Point prev_speeds = (0.0, 0.0);
 
 	pros::Task* chassis_task = nullptr;
 	pros::Mutex chassis_mutex;
@@ -78,6 +79,7 @@ public:
 	void turn(double target, Options options = {});
 
 	void tank(double left_speed, double right_speed);
+	void tank(Point speeds);
 	void arcade(double linear, double angular);
 	void arcade(pros::Controller& controller);
 	void stop();

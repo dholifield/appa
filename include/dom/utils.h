@@ -46,7 +46,13 @@ struct Options {
 };
 
 struct Point {
-	double x, y;
+	union {
+        struct { double x, y; };
+        struct { double left, right; };
+        struct { double linear, angular; };
+    };
+
+	Point(double x = 0, double y = 0) : x(x), y(y) {}
 
 	Point operator+(const Point& other) const {
 		return Point({x + other.x, y + other.y});

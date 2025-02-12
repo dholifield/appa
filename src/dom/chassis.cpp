@@ -37,24 +37,25 @@ void Chassis::move_task(Point target, Options opts) {
     // int settle = opts.settle.value_or(df_move_opts.settle.value_or(250));
     int timeout = opts.timeout.value_or(df_move_opts.timeout.value_or(10000));
 
-    double speed = opts.speed.value_or(df_move_opts.speed.value_or(100));
-    // double accel = opts.accel.value_or(df_move_opts.accel.value_or(50));
+    double max_speed = opts.speed.value_or(df_move_opts.speed.value_or(100));
+    double accel = opts.accel.value_or(df_move_opts.accel.value_or(50));
 
     PID lin_PID(opts.lin_PID.value_or(df_move_opts.lin_PID.value_or(Gains{10, 0, 0})));
-    PID ang_PID(opts.ang_PID.value_or(df_move_opts.ang_PID.value_or(Gains{100, 0, 0})));
+    PID ang_PID(opts.ang_PID.value_or(df_move_opts.ang_PID.value_or(Gains{50, 0, 0})));
 
     bool thru = opts.thru.value_or(df_move_opts.thru.value_or(false));
     bool relative = opts.relative.value_or(df_move_opts.relative.value_or(false));
 
     Pose pose = odom.get();
-    double lin_error = pose.dist(target);
-    double ang_error = pose.angle(target);
+    Point error = (pose.dist(target), pose.angle(target));
 
-    lin_PID.reset(lin_error);
-    ang_PID.reset(ang_error);
+    lin_PID.reset(error.linear);
+    ang_PID.reset(error.angular);
 
     double lin_speed, ang_speed;
-    double left_speed, right_speed;
+    Point speeds;
+    double prev_left = left_motors.get_voltage() / 120;
+    double prev_right = right_motors.get_voltage() / 120;
     
     // if relative motion
     if (relative) target = pose.p() + target.rotate(pose.theta);
@@ -64,50 +65,57 @@ void Chassis::move_task(Point target, Options opts) {
     int start_time = pros::millis();
     uint32_t now = pros::millis();
 
+    double accel_step = accel * dt / 1000;
+
     // control loop
     while(true) {
         // calculate error
         pose = odom.get();
-        lin_error = pose.dist(target);
-        ang_error = pose.angle(target);
+
+        error = (pose.dist(target), 
+                 pose.angle(target));
 
         // determine direction
         if (auto_dir) {
-            if (fabs(ang_error) > M_PI_2) dir = REVERSE;
+            if (fabs(error.angular) > M_PI_2) dir = REVERSE;
             else dir = FORWARD;
         }
-        if (dir == REVERSE) ang_error = M_PI - ang_error;
+        if (dir == REVERSE) error.angular = M_PI - error.angular;
 
         // calculate PID
-        lin_speed = thru ? speed : lin_PID.update(lin_error, dt);
-        ang_speed = ang_PID.update(ang_error, dt);
+        lin_speed = thru ? max_speed : lin_PID.update(error.linear, dt);
+        ang_speed = ang_PID.update(error.angular, dt);
 
         // apply limits
-        lin_speed = limit(lin_speed, speed);
-        ang_speed = limit(ang_speed, speed);
+        lin_speed = limit(lin_speed, max_speed);
+        ang_speed = limit(ang_speed, max_speed);
 
         // calculate motor speeds
-        left_speed = lin_speed - ang_speed;
-        right_speed = lin_speed + ang_speed;
+        speeds = (lin_speed - ang_speed, lin_speed + ang_speed);
 
         // scale motor speeds
-        if (left_speed > speed) { 
-            left_speed = speed;
-            right_speed *= speed / left_speed;
-        } else if (right_speed > speed) {
-            right_speed = speed;
-            left_speed *= speed / right_speed;
+        if (speeds.left > max_speed) { 
+            speeds.left = max_speed;
+            speeds.right *= max_speed / speeds.left;
+        }
+        if (speeds.right > max_speed) {
+            speeds.right = max_speed;
+            speeds.left *= max_speed / speeds.right;
         }
 
         // accelerate
-        
+        if (speeds.left - prev_speeds.left > accel_step) speeds.left = prev_speeds.left + accel_step;
+        if (speeds.right - prev_speeds.right > accel_step) speeds.right = prev_speeds.right + accel_step;
+        chassis_mutex.take();
+        prev_speeds = speeds;
+        chassis_mutex.give();
 
         // set motor speeds
-        tank(left_speed, right_speed);
+        tank(speeds);
 
         // check exit conditions
         if (timeout > 0 && pros::millis() - start_time > timeout) break;
-        if (lin_error < exit) break;
+        if (error.linear < exit) break;
 
         // delay task
         pros::c::task_delay_until(&now, dt);
@@ -145,6 +153,10 @@ void Chassis::turn(double target, Options options) {
 void Chassis::tank(double left_speed, double right_speed) {
     left_motors.move_voltage(left_speed * 120);
     right_motors.move_voltage(right_speed * 120);
+}
+
+void Chassis::tank(Point speeds) {
+    tank(speeds.left, speeds.right);
 }
 
 void Chassis::arcade(double linear, double angular) {
