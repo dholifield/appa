@@ -229,6 +229,9 @@ void Chassis::turn(double target, Options opts) {
         delete chassis_task;
     }
 
+    // convert to radians
+    target = to_rad(target);
+
     // start task
     if (opts.async.value_or(df_options.async.value_or(false))) {
         chassis_task =
@@ -238,7 +241,9 @@ void Chassis::turn(double target, Options opts) {
     }
 }
 
-void Chassis::turn(Point target, Options options) { turn(odom.get().p().angle(target), options); }
+void Chassis::turn(Point target, Options options) {
+    turn(to_deg(odom.get().p().angle(target)), options);
+}
 
 void Chassis::tank(double left_speed, double right_speed) {
     left_motors.move_voltage(left_speed * 120);
