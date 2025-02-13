@@ -70,7 +70,7 @@ void Chassis::move_task(Point target, Options opts) {
             else
                 dir = FORWARD;
         }
-        if (dir == REVERSE) error.angular = M_PI - error.angular;
+        if (dir == REVERSE) error.angular += error.angular > 0 ? -M_PI : M_PI;
 
         // calculate PID
         lin_speed = thru ? max_speed : lin_PID.update(error.linear, dt);
