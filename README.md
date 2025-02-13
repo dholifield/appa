@@ -31,7 +31,7 @@ dom::Odom odom({11, 1}, // x tracker port
 - The tracker ports can be `port` or `{expander port, port}`
 - TPI should be experimentally determined by moving the robot a known distance and recording the encoder output `ticks / distance`
 - The linear offset is `{x, y}` which is the distance from your tracking center to your center of mass
-- The angular offset can be used for [angled tracker wheel](https://www.youtube.com/watch?v=TqMNuXfKgMc) configurations, as long as the two wheels are perpendicular
+- The angular offset can be used for [angled tracker wheel](https://youtu.be/TqMNuXfKgMc?si=iwc8nQkSW-A0ZFeG&t=36) configurations, as long as the two wheels are perpendicular
 
 To start odometry, simply call `odom.start()`, usually during initialization.
 
