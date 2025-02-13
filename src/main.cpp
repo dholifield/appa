@@ -12,9 +12,9 @@ dom::MoveConfig move_config(1.0,         // exit (inches)
                             {10, 0, 0},  // linear pid gains
                             {50, 0, 0}); // angular pid gains
 
-dom::TurnConfig turn_config(2.0,        // exit (degrees)
-                            50,         // speed (%)
-                            {0, 0, 0}); // angular pid gains
+dom::TurnConfig turn_config(2.0,         // exit (degrees)
+                            50,          // speed (%)
+                            {10, 0, 0}); // angular pid gains
 
 dom::Options default_options = {.timeout = 5000, // ms
                                 .accel = 50};    // %/s
@@ -35,11 +35,16 @@ void disabled() {}
 
 void competition_initialize() {}
 
+dom::Options fast = {.speed = 100, .accel = 0, .thru = true};
+dom::Options precise = {.speed = 50, .accel = 20, .lin_PID = (5, 0, 0), .ang_PID = (2, 0, 0)};
+
 void autonomous() {
     printf("autonomous started\n");
     bot.set_brake_mode(pros::E_MOTOR_BRAKE_HOLD);
     odom.set(0, 0, 90);
     bot.move((0, 24), {.speed = 100});
+    bot.move((50, 0), fast);
+    bot.move((10, 0), precise);
 
     bot.set_brake_mode(pros::E_MOTOR_BRAKE_COAST);
 }

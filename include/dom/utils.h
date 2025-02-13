@@ -7,7 +7,7 @@ namespace dom {
 /* PID */
 struct Gains {
     double p, i, d;
-    Gains(double p, double i, double d) : p(p), i(i), d(d) {}
+    Gains(double p = 0.0, double i = 0.0, double d = 0.0) : p(p), i(i), d(d) {}
 };
 
 class PID {
