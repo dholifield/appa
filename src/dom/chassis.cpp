@@ -255,8 +255,8 @@ void Chassis::tank(double left_speed, double right_speed) {
 void Chassis::tank(Point speeds) { tank(speeds.left, speeds.right); }
 
 void Chassis::tank(pros::Controller& controller) {
-    double left_speed = controller.get_analog(pros::E_CONTROLLER_ANALOG_LEFT_Y);
-    double right_speed = controller.get_analog(pros::E_CONTROLLER_ANALOG_RIGHT_Y);
+    double left_speed = controller.get_analog(pros::E_CONTROLLER_ANALOG_LEFT_Y) / 1.27;
+    double right_speed = controller.get_analog(pros::E_CONTROLLER_ANALOG_RIGHT_Y) / 1.27;
     tank(left_speed, right_speed);
 }
 
@@ -267,8 +267,8 @@ void Chassis::arcade(double linear, double angular) {
 }
 
 void Chassis::arcade(pros::Controller& controller) {
-    double linear = controller.get_analog(pros::E_CONTROLLER_ANALOG_LEFT_Y);
-    double angular = controller.get_analog(pros::E_CONTROLLER_ANALOG_RIGHT_X);
+    double linear = controller.get_analog(pros::E_CONTROLLER_ANALOG_LEFT_Y) / 1.27;
+    double angular = controller.get_analog(pros::E_CONTROLLER_ANALOG_RIGHT_X) / 1.27;
     arcade(linear, angular);
 }
 
