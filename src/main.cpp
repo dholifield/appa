@@ -1,30 +1,30 @@
 #include "main.h"
 
-dom::Odom odom({2, 3}, // x tracker
-               {2, 1}, // y tracker
-               13,     // imu
-               321.5,  // tpi
-               {5, 0}, // tracker linear offset
-               45);    // tracker angular offset
+dom::Odom odom({2, 3}, // x tracker port
+               {2, 1}, // y tracker port
+               13,     // imu port
+               321.5,  // tracker encoder ticks per inch
+               {5, 0}, // tracker linear offset (inches)
+               45);    // tracker angular offset (degrees)
 
-dom::Options move_options = {.exit = 1.0,            // inches
-                             .timeout = 5000,        // ms
-                             .speed = 85,            // %
-                             .accel = 50,            // %/s
-                             .lin_PID = (10, 0, 0),  // linear pid gains
-                             .ang_PID = (50, 0, 0)}; // angular pid gains
+dom::MoveConfig move_config(1.0,         // exit (inches)
+                            85,          // speed (%)
+                            {10, 0, 0},  // linear pid gains
+                            {50, 0, 0}); // angular pid gains
 
-dom::Options turn_options = {.exit = 2.0,           // degrees
-                             .timeout = 5000,       // ms
-                             .speed = 50,           // %
-                             .accel = 50,           // %/s
-                             .ang_PID = (0, 0, 0)}; // angular pid gains
+dom::TurnConfig turn_config(2.0,        // exit (degrees)
+                            50,         // speed (%)
+                            {0, 0, 0}); // angular pid gains
+
+dom::Options default_options = {.timeout = 5000, // ms
+                                .accel = 50};    // %/s
 
 dom::Chassis bot({-10, -9, 8, 3, -1},    // left motors
                  {17, 19, -18, -12, 11}, // right motors
                  odom,                   // odom
-                 move_options,           // default move options
-                 turn_options);          // default turn options
+                 move_config,            // move configuration
+                 turn_config,            // turn configuration
+                 default_options);       // default options
 
 void initialize() {
     // start odometry
