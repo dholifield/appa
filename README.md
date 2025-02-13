@@ -18,7 +18,7 @@ The intent of this library it to make chassis movement both intuitive to use and
 This library is comprised of two main components: odometry for position tracking and a chassis for robot movement.
 
 ## Odometry
-[Odometry](https://wiki.purduesigbots.com/software/odometry) is used for keeping track of the robots position at all times. The supported configuration is for two tracker wheels, one in the x and one in the y direction, in combination with an IMU. Here is how to create an instance of odom:
+[Odometry](https://wiki.purduesigbots.com/software/odometry) is used for keeping track of the robots position at all times. The supported configuration is for two tracker wheels, one in the x (forward) and one in the y (left) direction, in combination with an IMU. Here is how to create an instance of odom:
 ```c++
 dom::Odom odom({11, 1}, // x tracker port
                {11, 3}, // y tracker port
@@ -30,7 +30,7 @@ dom::Odom odom({11, 1}, // x tracker port
 
 - The tracker ports can be `port` or `{expander port, port}`
 - TPI should be experimentally determined by moving the robot a known distance and recording the encoder output `ticks / distance`
-- The linear offset is `{x, y}` with x in the forwards direction of the robot, and y in the left direction
+- The linear offset is `{x, y}` which is the distance from your tracking center to your center of mass
 - The angular offset can be used for [angled tracker wheel](https://www.youtube.com/watch?v=TqMNuXfKgMc) configurations, as long as the two wheels are perpendicular
 
 To start odometry, simply call `odom.start()`, usually during initialization.
@@ -46,13 +46,13 @@ The chassis is whats used to actually control the robot. Only differential drive
 
 ```c++
 dom::MoveConfig move_config(1.0,        // exit (inches)
-                          85,         // speed (%)
-                          {1, 1, 1},  // linear pid gains
-                          {1, 1, 1}); // angular pid gains
+                            85,         // speed (%)
+                            {1, 1, 1},  // linear pid gains
+                            {1, 1, 1}); // angular pid gains
 
 dom::TurnConfig turn_config(2.0,        // exit (degrees)
-                          50,         // speed (%)
-                          {1, 1, 1}); // angular pid gains
+                            50,         // speed (%)
+                            {1, 1, 1}); // angular pid gains
 
 dom::Options default_options = {.timeout = 5000, // ms
                                 .accel = 50};    // %/s
@@ -60,8 +60,8 @@ dom::Options default_options = {.timeout = 5000, // ms
 dom::Chassis bot({1, 2, 3, 4, 5},       // left motors
                  {-6, -7, -8, -9, -10}, // right motors
                  odom,                  // odom
-                 move_config,            // move configuration
-                 turn_config,            // turn configuration
+                 move_config,           // move configuration
+                 turn_config,           // turn configuration
                  default_options);      // default options
 ```
 - Left and Right motors are provided in a `list`. Negative reverses the motor direction
