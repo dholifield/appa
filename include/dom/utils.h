@@ -43,25 +43,12 @@ struct Options {
 };
 
 struct MoveConfig {
-    double exit;
-    // double settle;
-    double timeout = 0;
-
-    double speed = 100;
-    double accel = 0;
-
-    Gains lin_PID;
-    Gains ang_PID;
+    double exit, speed;
+    Gains lin_PID, ang_PID;
 };
 
 struct TurnConfig {
-    double exit;
-    // double settle;
-    double timeout = 0;
-
-    double speed = 100;
-    double accel = 0;
-
+    double exit, speed;
     Gains ang_PID;
 };
 
