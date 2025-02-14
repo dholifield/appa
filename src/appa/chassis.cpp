@@ -1,6 +1,6 @@
-#include "dom.h"
+#include "appa.h"
 
-namespace dom {
+namespace appa {
 
 /* Chassis */
 Chassis::Chassis(std::initializer_list<int8_t> left_motors,
@@ -161,6 +161,7 @@ void Chassis::turn_task(double target, Options opts) {
 
     // if relative motion
     if (relative) target += heading;
+    if (dir == REVERSE) target += M_PI;
 
     // timing
     int dt = 10; // ms
@@ -242,7 +243,9 @@ void Chassis::turn(double target, Options opts) {
 }
 
 void Chassis::turn(Point target, Options options) {
-    turn(to_deg(odom.get().p().angle(target)), options);
+    double heading = to_deg(odom.get().p().angle(target));
+
+    turn(heading, options);
 }
 
 void Chassis::tank(double left_speed, double right_speed) {
@@ -282,11 +285,11 @@ void Chassis::stop(bool stop_task) {
 }
 
 void Chassis::set_brake_mode(pros::motor_brake_mode_e_t mode) {
-    left_motors.set_brake_mode(mode);
-    right_motors.set_brake_mode(mode);
+    left_motors.set_brake_mode_all(mode);
+    right_motors.set_brake_mode_all(mode);
 }
 
-} // namespace dom
+} // namespace appa
 
 /**
  * TODO: add settle time

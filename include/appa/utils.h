@@ -1,8 +1,8 @@
 #pragma once
 
-#include "dom.h"
+#include "appa.h"
 
-namespace dom {
+namespace appa {
 
 /* PID */
 struct Gains {
@@ -22,7 +22,7 @@ class PID {
 };
 
 // Utils //
-enum Direction { FORWARD = 1, AUTO = 0, REVERSE = -1, CCW = 1, CW = -1 };
+enum Direction { FORWARD = 1, AUTO = 0, REVERSE = -1, CCW = 2, CW = -2 };
 
 struct Options {
     std::optional<Direction> dir;
@@ -116,4 +116,4 @@ double to_rad(double deg);
 double to_deg(double rad);
 double limit(double val, double limit);
 
-} // namespace dom
+} // namespace appa
