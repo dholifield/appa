@@ -61,6 +61,13 @@ class Chassis {
     pros::Mutex chassis_mutex;
     std::atomic<bool> is_driving{false};
 
+    enum Motion { MOVE, TURN };
+    struct Command {
+        Motion motion;
+        Pose target;
+        Options options;
+    };
+
   public:
     Chassis(std::initializer_list<int8_t> left_motors, std::initializer_list<int8_t> right_motors,
             Odom& odom, MoveConfig move_config, TurnConfig turn_config,
