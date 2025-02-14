@@ -65,11 +65,14 @@ appa::Chassis bot({1, 2, 3, 4, 5},       // left motors
 - Left and Right motors are provided in a `list`. Negative reverses the motor direction
 - Move and turn configurations set default parameters for those movements
 - Default options will be shared by all movements and used if nothing is specified when a movement is called. Options and are described below
+
 ### Options
 Options contain different parameters for a chassis movement. Options, as the name implies, are optional and can be used to change the default options or configurations. Options are as follows:
 
 - `Direction dir` the direction of the movement. defaults to `AUTO`
-    - can be `FORWARD`/`CCW`, `AUTO`, or `REVERSE`/`CW`
+    - can be `AUTO`, `FORWARD`, or `REVERSE`
+- `TurnDirection turn` the rotating direction of the turn. defaults to `AUTO`
+    - can be `AUTO`, `CCW`, or `CW`
 - `double exit` the maximum error to be considered at target. defaults to `config.exit`*
 - `int timeout` the maximum allowed time for a movement. defaults to `0` or ignore timeout
 - `double speed` the maximum speed of a movement. defaults to `config.speed`*

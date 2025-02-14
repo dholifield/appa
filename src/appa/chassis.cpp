@@ -138,6 +138,7 @@ void Chassis::move(double target, Options options) {
 void Chassis::turn_task(double target, Options opts) {
     // set up variables
     Direction dir = opts.dir.value_or(df_options.dir.value_or(AUTO));
+    TurnDirection turn_dir = opts.turn.value_or(df_options.turn.value_or(AUTO));
 
     double exit = opts.exit.value_or(turn_config.exit);
     // int settle = opts.settle.value_or(df_turn_opts.settle.value_or(250));
@@ -175,13 +176,13 @@ void Chassis::turn_task(double target, Options opts) {
         // calculate error
         heading = odom.get().theta;
 
-        error = std::fmod(heading - target, M_PI);
+        error = std::fmod(target - heading, M_PI);
 
         // determine direction
-        if (dir == CW && error > 0)
-            error -= 2 * M_PI;
-        else if (dir == CCW && error < 0)
+        if (turn_dir == CW && error < 0)
             error += 2 * M_PI;
+        else if (turn_dir == CCW && error > 0)
+            error -= 2 * M_PI;
 
         // calculate PID
         ang_speed = thru ? (error > 0 ? max_speed : -max_speed) : ang_PID.update(error, dt);
@@ -191,16 +192,6 @@ void Chassis::turn_task(double target, Options opts) {
 
         // calculate motor speeds
         speeds = (-ang_speed, ang_speed);
-
-        // scale motor speeds
-        if (speeds.left > max_speed) {
-            speeds.left = max_speed;
-            speeds.right *= max_speed / speeds.left;
-        }
-        if (speeds.right > max_speed) {
-            speeds.right = max_speed;
-            speeds.left *= max_speed / speeds.right;
-        }
 
         // limit acceleration
         if (accel_step) {
