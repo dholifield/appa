@@ -1,5 +1,6 @@
-#include "dom.h"
-namespace dom {
+#include "appa.h"
+
+namespace appa {
 
 /* PID */
 PID::PID(Gains k) : k(k) { reset(0.0); }
@@ -22,4 +23,4 @@ double to_rad(double deg) { return deg * M_PI / 180; }
 double to_deg(double rad) { return rad * 180 / M_PI; }
 double limit(double val, double limit) { return val > limit ? limit : val < -limit ? -limit : val; }
 
-} // namespace dom
+} // namespace appa

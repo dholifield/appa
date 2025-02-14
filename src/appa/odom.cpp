@@ -1,6 +1,6 @@
-#include "dom.h"
+#include "appa.h"
 
-namespace dom {
+namespace appa {
 
 /* Odom */
 Odom::Odom(int8_t x_port, int8_t y_port, int8_t imu_port, int tpi, Point tracker_linear_offset,
@@ -126,4 +126,4 @@ void Odom::debug() {
     printf("x: %.2f, y: %.2f, theta: %.2f\n", pose.x, pose.y, to_deg(pose.theta));
 }
 
-} // namespace dom
+} // namespace appa
