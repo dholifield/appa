@@ -39,6 +39,18 @@ void initialize() {
 }
 ```
 
+Odometry will do its work in the background after you start it, and should be passed into a chassis to use it. Here are some useful commands:
+
+```c++
+// set the robot's pose
+odom.set(24, 12, 90);
+// get the robot's pose
+odom.get();
+// set the tracking offset (if COG changes)
+// note: this doesn't change tracking, just the .get() function (used in movements)
+odom.set_offset((5, 0));
+```
+
 ## Chassis
 The chassis is whats used to actually control the robot. Only differential drive robots are supported in this library. Most holonomic drives will work fine, but won't take advantage of its capabilities. The chassis contains configurations for the different movement types as well as optional options. Information on tuning a PID can be found [here](https://wiki.purduesigbots.com/software/control-algorithms/pid-controller). Here is how to make a chassis:
 
@@ -55,21 +67,24 @@ appa::TurnConfig turn_config(2.0,        // exit (degrees)
 appa::Options default_options = {.timeout = 5000, // ms
                                  .accel = 50};    // %/s
 
-appa::Chassis bot({1, 2, 3, 4, 5},       // left motors
-                  {-6, -7, -8, -9, -10}, // right motors
-                  odom,                  // odom
-                  move_config,           // move configuration
-                  turn_config,           // turn configuration
-                  default_options);      // default options
+appa::Chassis appa({1, 2, 3, 4, 5},       // left motors
+                   {-6, -7, -8, -9, -10}, // right motors
+                   odom,                  // odom
+                   move_config,           // move configuration
+                   turn_config,           // turn configuration
+                   default_options);      // default options
 ```
 - Left and Right motors are provided in a `list`. Negative reverses the motor direction
 - Move and turn configurations set default parameters for those movements
 - Default options will be shared by all movements and used if nothing is specified when a movement is called. Options and are described below
+
 ### Options
 Options contain different parameters for a chassis movement. Options, as the name implies, are optional and can be used to change the default options or configurations. Options are as follows:
 
 - `Direction dir` the direction of the movement. defaults to `AUTO`
-    - can be `FORWARD`/`CCW`, `AUTO`, or `REVERSE`/`CW`
+    - can be `AUTO`, `FORWARD`, or `REVERSE`
+- `Direction turn` the rotating direction of a turn. defaults to `AUTO`
+    - can be `AUTO`, `CCW`, or `CW`
 - `double exit` the maximum error to be considered at target. defaults to `config.exit`*
 - `int timeout` the maximum allowed time for a movement. defaults to `0` or ignore timeout
 - `double speed` the maximum speed of a movement. defaults to `config.speed`*
@@ -80,20 +95,21 @@ Options contain different parameters for a chassis movement. Options, as the nam
 - `bool thru` true for through movements. defaults to `false`
 - `bool relative` true for relative movements. defaults to `false`
 
-_*these options will be ignored in the default_options as the configurations take precedence_
+_*these options will be ignored in the default_options as the configurations take precedence_\
+_(any options set with default_options will override the defaults above unless otherwise noted)_
 
 ### Movements
 Currently, there are 2 different motion commands: `move(Point/Distance, Options)`, and `turn(Point/Angle, Options)`. This makes it very easy to control the chassis. The movement parameters will automatically default to configurations or default options for those not specified. Movements can be done like:
 
 ```c++
 // move to point (24, 0)
-bot.move((24, 0));
+appa.move((24, 0));
 // move to point (24, 24) asynchronously at max speed
-bot.move((24, 24), {.speed = 100, .async = true});
+appa.move((24, 24), {.speed = 100, .async = true});
 // turn so the rear faces (0, 0)
-bot.turn((0, 0), {.dir = REVERSE});
-// turn 90 degrees CCW
-bot.turn(90, {.relative = true});
+appa.turn((0, 0), {.dir = REVERSE});
+// turn 180 degrees CCW
+appa.turn(180, {.relative = true, .turn = CCW});
 ```
 
 Options also make it very easy to tune specific types of motions and use them throughout your autonomous
@@ -102,11 +118,11 @@ Options also make it very easy to tune specific types of motions and use them th
 // options for a fast movement
 appa::Options fast = {.speed = 100, .accel = 0, .exit = 5, .thru = true};
 // options for a precise movement
-appa::Options precise = {.speed = 50, .accel = 20, .exit = 0.5, .lin_PID = (5, 0, 0)};
+appa::Options precise = {.speed = 50, .accel = 20, .exit = 0.5, .lin_PID = (5, 0, 1)};
 
-bot.move((50, 0), fast);
-bot.move((10, 0), precise);
-bot.turn(90, fast);
+appa.move((50, 0), fast);
+appa.move((10, 0), precise);
+appa.turn(90, fast);
 ```
 
 For operator control, tank and arcade controls exist. You can pass in the controller for ease of use, or simply use numbers for custom curves
@@ -117,9 +133,18 @@ void opcontrol() {
 
     while(true) {
         // arcade controls
-        bot.arcade(master);
+        appa.arcade(master);
         // tank controls
-        bot.tank(master);
+        appa.tank(master);
     }
 }
+```
+Please go through the header file `include/appa/appa.h` Other useful chassis commands include:
+```c++
+// wait for the movement to stop
+appa.wait();
+// set the brake mode
+appa.set_brake_mode(pros::E_MOTOR_BRAKE_HOLD);
+// stop moving
+appa.stop();
 ```

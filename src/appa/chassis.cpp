@@ -138,7 +138,7 @@ void Chassis::move(double target, Options options) {
 void Chassis::turn_task(double target, Options opts) {
     // set up variables
     Direction dir = opts.dir.value_or(df_options.dir.value_or(AUTO));
-    TurnDirection turn_dir = opts.turn.value_or(df_options.turn.value_or(AUTO));
+    Direction turn_dir = opts.turn.value_or(df_options.turn.value_or(AUTO));
 
     double exit = opts.exit.value_or(turn_config.exit);
     // int settle = opts.settle.value_or(df_turn_opts.settle.value_or(250));

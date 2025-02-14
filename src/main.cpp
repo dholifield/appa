@@ -19,12 +19,12 @@ appa::TurnConfig turn_config(2.0,         // exit (degrees)
 appa::Options default_options = {.timeout = 5000, // ms
                                  .accel = 50};    // %/s
 
-appa::Chassis bot({-10, -9, 8, 3, -1},    // left motors
-                  {17, 19, -18, -12, 11}, // right motors
-                  odom,                   // odom
-                  move_config,            // move configuration
-                  turn_config,            // turn configuration
-                  default_options);       // default options
+appa::Chassis appa({-10, -9, 8, 3, -1},    // left motors
+                   {17, 19, -18, -12, 11}, // right motors
+                   odom,                   // odom
+                   move_config,            // move configuration
+                   turn_config,            // turn configuration
+                   default_options);       // default options
 
 void initialize() {
     // start odometry
@@ -40,26 +40,26 @@ appa::Options precise = {.speed = 50, .accel = 20, .lin_PID = (5, 0, 0), .ang_PI
 
 void autonomous() {
     printf("autonomous started\n");
-    bot.set_brake_mode(pros::E_MOTOR_BRAKE_HOLD);
+    appa.set_brake_mode(pros::E_MOTOR_BRAKE_HOLD);
     odom.set(0, 0, 90);
 
-    bot.move((0, 24), {.speed = 100});
-    bot.move((50, 0), fast);
-    bot.move((10, 0), precise);
+    appa.move((0, 24), {.speed = 100});
+    appa.move((50, 0), fast);
+    appa.move((10, 0), precise);
 }
 
 void opcontrol() {
     pros::Controller master(pros::E_CONTROLLER_MASTER);
-    bot.set_brake_mode(pros::E_MOTOR_BRAKE_COAST);
+    appa.set_brake_mode(pros::E_MOTOR_BRAKE_COAST);
     printf("opcontrol started\n");
 
     while (true) {
         if (master.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_A)) {
             autonomous();
-            bot.set_brake_mode(pros::E_MOTOR_BRAKE_COAST);
+            appa.set_brake_mode(pros::E_MOTOR_BRAKE_COAST);
         }
 
-        bot.arcade(master);
+        appa.arcade(master);
         // odom.debug();
         pros::delay(10);
     }

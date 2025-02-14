@@ -22,12 +22,11 @@ class PID {
 };
 
 // Utils //
-enum Direction { AUTO, FORWARD, REVERSE };
-enum TurnDirection { AUTO, CCW, CW };
+enum Direction { AUTO, FORWARD, REVERSE, CCW, CW };
 
 struct Options {
     std::optional<Direction> dir;
-    std::optional<TurnDirection> turn;
+    std::optional<Direction> turn;
 
     std::optional<double> exit;
     // std::optional<int> settle;
