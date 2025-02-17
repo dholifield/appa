@@ -21,7 +21,7 @@ class PID {
     double update(double error, int dt);
 };
 
-// Utils //
+/* Utils */
 enum Direction { AUTO, FORWARD, REVERSE, CCW, CW };
 
 struct Options {
@@ -43,7 +43,7 @@ struct Options {
     std::optional<bool> relative;
 
     static Options defaults() {
-        return Options(AUTO, AUTO, 0, 0, 0, 0, 0, Gains(), Gains(), false, false, false);
+        return Options(AUTO, AUTO, 0.0, 0, 0.0, 0.0, 0.0, Gains(), Gains(), false, false, false);
     }
 
     Options operator<<(const Options& other) const {
@@ -65,23 +65,6 @@ struct Options {
         return result;
     }
     Options operator>>(const Options& other) const { return other << *this; }
-
-    // void unpack(Direction& dir, Direction& turn, double& exit, int& timeout, double& speed,
-    //             double& accel, Gains& lin_PID, Gains& ang_PID, bool& async, bool& thru,
-    //             bool& relative) {
-    //     if (this->dir) dir = this->dir.value();
-    //     if (this->turn) turn = this->turn.value();
-    //     if (this->exit) exit = this->exit.value();
-    //     if (this->timeout) timeout = this->timeout.value();
-    //     if (this->speed) speed = this->speed.value();
-    //     if (this->accel) accel = this->accel.value();
-    //     if (this->lead) lead = this->lead.value();
-    //     if (this->lin_PID) lin_PID = this->lin_PID.value();
-    //     if (this->ang_PID) ang_PID = this->ang_PID.value();
-    //     if (this->async) async = this->async.value();
-    //     if (this->thru) thru = this->thru.value();
-    //     if (this->relative) relative = this->relative.value();
-    // }
 };
 
 struct MoveConfig {
@@ -144,6 +127,10 @@ struct Pose {
     void operator+=(const Point& p) {
         x += p.x;
         y += p.y;
+    }
+    void operator=(const Point& p) {
+        x = p.x;
+        y = p.y;
     }
 
     Point p() const { return {x, y}; }

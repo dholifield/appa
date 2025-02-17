@@ -20,12 +20,12 @@ appa::TurnConfig turn_config(2.0,         // exit (degrees)
 appa::Options default_options = {.timeout = 5000, // ms
                                  .accel = 50};    // %/s
 
-appa::Chassis appa({-10, -9, 8, 3, -1},    // left motors
-                   {17, 19, -18, -12, 11}, // right motors
-                   odom,                   // odom
-                   move_config,            // move configuration
-                   turn_config,            // turn configuration
-                   default_options);       // default options
+appa::Chassis bot({-10, -9, 8, 3, -1},    // left motors
+                  {17, 19, -18, -12, 11}, // right motors
+                  odom,                   // odom
+                  move_config,            // move configuration
+                  turn_config,            // turn configuration
+                  default_options);       // default options
 
 void initialize() {
     // start odometry
@@ -36,32 +36,32 @@ void disabled() {}
 
 void competition_initialize() {}
 
-appa::Options fast = {.speed = 100, .accel = 0, .thru = true};
-appa::Options precise = {
-    .speed = 50, .accel = 20, .lin_PID = appa::Gains{5, 0, 0}, .ang_PID = appa::Gains{2, 0, 0}};
+appa::Options thru = {.exit = 4, .thru = true};
+appa::Options fast = {.speed = 100, .accel = 0};
+appa::Options precise = {.speed = 50, .accel = 20, .lin_PID = appa::Gains{5, 0, 0}};
 
 void autonomous() {
     printf("autonomous started\n");
-    appa.set_brake_mode(pros::E_MOTOR_BRAKE_HOLD);
+    bot.set_brake_mode(MOTOR_BRAKE_HOLD);
     odom.set(0, 0, 90);
 
-    appa.move({0, 24}, {.speed = 100});
-    appa.move({50, 0}, fast);
-    appa.move({10, 0, 90}, precise, {.lead = 0.3});
+    bot.move({24, 12});                            // move with default options
+    bot.move({50, 0}, fast << thru);               // move with thru and fast options
+    bot.move({10, 0, 90}, precise, {.lead = 0.3}); // move with precise options plus different lead
 }
 
 void opcontrol() {
-    pros::Controller master(pros::E_CONTROLLER_MASTER);
-    appa.set_brake_mode(pros::E_MOTOR_BRAKE_COAST);
+    pros::Controller master(CONTROLLER_MASTER);
+    bot.set_brake_mode(MOTOR_BRAKE_COAST);
     printf("opcontrol started\n");
 
     while (true) {
-        if (master.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_A)) {
+        if (master.get_digital_new_press(DIGITAL_A)) {
             autonomous();
-            appa.set_brake_mode(pros::E_MOTOR_BRAKE_COAST);
+            bot.set_brake_mode(MOTOR_BRAKE_HOLD);
         }
 
-        appa.arcade(master);
+        bot.arcade(master);
         // odom.debug();
         pros::delay(10);
     }

@@ -14,9 +14,9 @@ Chassis::Chassis(std::initializer_list<int8_t> left_motors,
                                              .lin_PID = move_config.lin_PID,
                                              .ang_PID = move_config.ang_PID};
     df_turn = Options::defaults() << default_options
-                                  << Options{.exit = move_config.exit,
-                                             .speed = move_config.speed,
-                                             .ang_PID = move_config.ang_PID};
+                                  << Options{.exit = to_rad(turn_config.exit),
+                                             .speed = turn_config.speed,
+                                             .ang_PID = turn_config.ang_PID};
 }
 
 Chassis::~Chassis() { stop(true); }
@@ -25,22 +25,22 @@ void Chassis::wait() {
     if (chassis_task) { chassis_task->join(); }
 }
 
-void Chassis::move_task(Pose target, Options opts, Motion motion) {
+void Chassis::motion_task(Pose target, Options opts, Motion motion) {
     // set up variables
-    int dt = 10; // ms
+    const int dt = 10; // ms
 
     Direction dir = opts.dir.value();
-    Direction turn_dir = opts.turn.value();
-    bool auto_dir = dir == AUTO;
-    double exit = opts.exit.value();
-    int timeout = opts.timeout.value();
-    double max_speed = opts.speed.value();
-    double accel_step = opts.accel.value() * dt / 1000;
-    double lead = opts.lead.value();
+    const bool auto_dir = dir == AUTO;
+    const Direction turn_dir = opts.turn.value();
+    const double exit = opts.exit.value();
+    const int timeout = opts.timeout.value();
+    const double max_speed = opts.speed.value();
+    const double accel_step = opts.accel.value() * dt / 1000;
+    const double lead = opts.lead.value();
     PID lin_PID(opts.lin_PID.value());
     PID ang_PID(opts.ang_PID.value());
-    bool thru = opts.thru.value();
-    bool relative = opts.relative.value();
+    const bool thru = opts.thru.value();
+    const bool relative = opts.relative.value();
 
     Pose pose = odom.get();
     Point error, carrot, speeds;
@@ -53,31 +53,37 @@ void Chassis::move_task(Pose target, Options opts, Motion motion) {
     // timing
     uint32_t start_time = pros::millis();
     uint32_t now = pros::millis();
+    bool running = true;
 
     // control loop
-    while (true) {
-        // calculate error
-        pose = odom.get();
-        if (motion == MOVE) {
-            error = (pose.dist(target.p()), pose.angle(target.p()));
-            if (target.theta != NAN) { // for move to pose
+    while (running) {
+        // find error and direction based on motion type
+        switch (motion) {
+        case MOVE:
+            // error
+            error = {pose.dist(target.p()), pose.angle(target.p())};
+            if (target.theta != NAN) { // move to pose
                 carrot = target.p() - Point{error.linear * lead, 0}.rotate(target.theta);
-                error = (pose.dist(carrot), pose.angle(carrot));
+                error = {pose.dist(carrot), pose.angle(carrot)};
             }
-        } else if (motion == TURN) {
-            error = (0.0, std::fmod(target.theta - pose.theta, M_PI));
-        } else break;
-
-        // determine direction
-        if (motion == MOVE) {
+            // direction
             if (auto_dir) dir = fabs(error.angular) > M_PI_2 ? REVERSE : FORWARD;
             if (dir == REVERSE) {
                 error.angular += error.angular > 0 ? -M_PI : M_PI;
                 error.linear *= -1;
             }
-        } else if (motion == TURN) {
+            break;
+        case TURN:
+            // error
+            if (target.theta == NAN) error = {0.0, pose.angle(target.p())}; // turn to point
+            else error = {0.0, std::fmod(target.theta - pose.theta, M_PI)}; // turn to heading
+            // direction
             if (turn_dir == CW && error.angular < 0) error.angular += 2 * M_PI;
             else if (turn_dir == CCW && error.angular > 0) error.angular -= 2 * M_PI;
+            break;
+        default:
+            running = false;
+            continue;
         }
 
         // calculate PID
@@ -115,23 +121,33 @@ void Chassis::move_task(Pose target, Options opts, Motion motion) {
         tank(speeds);
 
         // check exit conditions
-        if (timeout > 0 && pros::millis() - start_time > timeout) break;
-        if (error.linear < exit) break;
+        if (timeout > 0 && pros::millis() - start_time > timeout) running = false;
+        if (error.linear < exit) running = false;
 
         // delay task
         pros::c::task_delay_until(&now, dt);
     }
-    stop(false);
+    if (!thru) stop(false);
 }
 
-void Chassis::motion_run(Pose target, Options opts, Options override, Motion motion) {
+void Chassis::motion_run(Pose target, Options opts, Motion motion) {
     // stop task if robot is already moving
     if (chassis_task) {
         chassis_task->remove();
         delete chassis_task;
     }
 
-    // prime target
+    // start task if async
+    if (opts.async.value()) {
+        chassis_task = new pros::Task(
+            [this, target, opts, motion] { motion_task(target, opts, motion); }, "chassis_task");
+    } else {
+        motion_task(target, opts, motion);
+    }
+}
+
+void Chassis::move(Pose target, Options opts, Options override) {
+    // configure target
     if (target.y == NAN) {
         target.y = 0.0;
         opts.relative = true;
@@ -141,32 +157,21 @@ void Chassis::motion_run(Pose target, Options opts, Options override, Motion mot
     // merge options
     opts = df_move << opts << override;
 
-    // start task if async
-    if (opts.async.value()) {
-        chassis_task =
-            new pros::Task([this, target, opts] { move_task(target, opts); }, "chassis_task");
-    } else {
-        move_task(target, opts, motion);
-    }
+    // run motiong
+    motion_task(target, opts, MOVE);
 }
 
-void Chassis::turn(Point target, Options opts) {
-    // stop task if robot is already moving
-    if (chassis_task) {
-        chassis_task->remove();
-        delete chassis_task;
-    }
+void Chassis::turn(Point target, Options opts, Options override) {
+    // configure target
+    Pose target_pose;
+    if (target.y == NAN) target_pose.theta = to_rad(target.x);
+    else target_pose = target;
 
-    // convert to radians
-    target = to_rad(target);
+    // merge options
+    opts = df_move << opts << override;
 
-    // start task
-    if (opts.async.value_or(df_options.async.value_or(false))) {
-        chassis_task =
-            new pros::Task([this, target, opts] { turn_task(target, opts); }, "chassis_task");
-    } else {
-        turn_task(target, opts);
-    }
+    // run motiong
+    motion_task(target_pose, opts, TURN);
 }
 
 void Chassis::tank(double left_speed, double right_speed) {

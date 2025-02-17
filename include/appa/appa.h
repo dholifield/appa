@@ -57,7 +57,6 @@ class Chassis {
 
     pros::Task* chassis_task = nullptr;
     pros::Mutex chassis_mutex;
-    std::atomic<bool> is_driving{false};
 
     enum Motion { MOVE, TURN };
 
@@ -83,6 +82,6 @@ class Chassis {
     void arcade(pros::Controller& controller);
     void stop(bool stop_task = true);
 
-    void set_brake_mode(pros::motor_brake_mode_e_t mode);
+    void set_brake_mode(pros::motor_brake_mode_e mode);
 };
 } // namespace appa
