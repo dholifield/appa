@@ -22,7 +22,7 @@ class PID {
 };
 
 // Utils //
-enum Direction { AUTO, FORWARD, REVERSE, CCW, CW };
+enum Direction { AUTO = 0, FORWARD = 1, REVERSE = -1, CCW = 1, CW = -1 };
 
 struct Options {
     std::optional<Direction> dir;
@@ -34,6 +34,7 @@ struct Options {
 
     std::optional<double> speed;
     std::optional<double> accel;
+    std::optional<double> lead;
 
     std::optional<Gains> lin_PID;
     std::optional<Gains> ang_PID;
@@ -44,7 +45,7 @@ struct Options {
 };
 
 struct MoveConfig {
-    double exit, speed;
+    double exit, speed, lead;
     Gains lin_PID, ang_PID;
 };
 
@@ -62,7 +63,7 @@ struct Point {
     };
     // clang-format on
 
-    Point(double x = 0.0, double y = 0.0) : x(x), y(y) {}
+    Point(double x = NAN, double y = NAN) : x(x), y(y) {}
 
     Point operator+(const Point& other) const { return Point({x + other.x, y + other.y}); }
     Point operator-(const Point& other) const { return Point({x - other.x, y - other.y}); }
@@ -96,13 +97,18 @@ struct Point {
 struct Pose {
     double x, y, theta;
 
-    Pose(double x = 0.0, double y = 0.0, double theta = 0.0) : x(x), y(y), theta(theta) {}
+    Pose(double x = NAN, double y = NAN, double theta = NAN) : x(x), y(y), theta(theta) {}
     Pose(Point p, double theta) : x(p.x), y(p.y), theta(theta) {}
 
     Pose operator+(const Point& p) const { return Pose({x + p.x, y + p.y}, theta); }
     void operator+=(const Point& p) {
         x += p.x;
         y += p.y;
+    }
+    void operator+=(const Pose& other) {
+        x += other.x;
+        y += other.y;
+        theta += other.theta;
     }
 
     Point p() const { return {x, y}; }

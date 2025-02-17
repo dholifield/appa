@@ -48,7 +48,7 @@ odom.set(24, 12, 90);
 odom.get();
 // set the tracking offset (if COG changes)
 // note: this doesn't change tracking, just the .get() function (used in movements)
-odom.set_offset((5, 0));
+odom.set_offset({5, 0});
 ```
 
 ## Chassis
@@ -67,12 +67,12 @@ appa::TurnConfig turn_config(2.0,        // exit (degrees)
 appa::Options default_options = {.timeout = 5000, // ms
                                  .accel = 50};    // %/s
 
-appa::Chassis appa({1, 2, 3, 4, 5},       // left motors
-                   {-6, -7, -8, -9, -10}, // right motors
-                   odom,                  // odom
-                   move_config,           // move configuration
-                   turn_config,           // turn configuration
-                   default_options);      // default options
+appa::Chassis bot({1, 2, 3, 4, 5},       // left motors
+                  {-6, -7, -8, -9, -10}, // right motors
+                  odom,                  // odom
+                  move_config,           // move configuration
+                  turn_config,           // turn configuration
+                  default_options);      // default options
 ```
 - Left and Right motors are provided in a `list`. Negative reverses the motor direction
 - Move and turn configurations set default parameters for those movements
@@ -103,13 +103,13 @@ Currently, there are 2 different motion commands: `move(Point/Distance, Options)
 
 ```c++
 // move to point (24, 0)
-appa.move((24, 0));
+bot.move({24, 0});
 // move to point (24, 24) asynchronously at max speed
-appa.move((24, 24), {.speed = 100, .async = true});
+bot.move({24, 24}, {.speed = 100, .async = true});
 // turn so the rear faces (0, 0)
-appa.turn((0, 0), {.dir = REVERSE});
+bot.turn({0, 0}, {.dir = REVERSE});
 // turn 180 degrees CCW
-appa.turn(180, {.relative = true, .turn = CCW});
+bot.turn(180, {.relative = true, .turn = CCW});
 ```
 
 Options also make it very easy to tune specific types of motions and use them throughout your autonomous
@@ -118,11 +118,11 @@ Options also make it very easy to tune specific types of motions and use them th
 // options for a fast movement
 appa::Options fast = {.speed = 100, .accel = 0, .exit = 5, .thru = true};
 // options for a precise movement
-appa::Options precise = {.speed = 50, .accel = 20, .exit = 0.5, .lin_PID = (5, 0, 1)};
+appa::Options precise = {.speed = 50, .accel = 20, .exit = 0.5, .lin_PID = appa::Gains{5, 0, 1}};
 
-appa.move((50, 0), fast);
-appa.move((10, 0), precise);
-appa.turn(90, fast);
+bot.move({50, 0}, fast);
+bot.move({10, 0}, precise);
+bot.turn(90, fast);
 ```
 
 For operator control, tank and arcade controls exist. You can pass in the controller for ease of use, or simply use numbers for custom curves
@@ -133,18 +133,18 @@ void opcontrol() {
 
     while(true) {
         // arcade controls
-        appa.arcade(master);
+        bot.arcade(master);
         // tank controls
-        appa.tank(master);
+        bot.tank(master);
     }
 }
 ```
 Please go through the header file `include/appa/appa.h` Other useful chassis commands include:
 ```c++
 // wait for the movement to stop
-appa.wait();
+bot.wait();
 // set the brake mode
-appa.set_brake_mode(pros::E_MOTOR_BRAKE_HOLD);
+bot.set_brake_mode(pros::E_MOTOR_BRAKE_HOLD);
 // stop moving
-appa.stop();
+bot.stop();
 ```

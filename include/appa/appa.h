@@ -11,7 +11,7 @@ namespace appa {
 /* Odom */
 class Odom {
   private:
-    Pose odom_pose = (0, 0, 0);
+    Pose odom_pose = {0.0, 0.0, 0.0};
     pros::Mutex odom_mutex;
     pros::Task* odom_task = nullptr;
 
@@ -54,15 +54,15 @@ class Chassis {
     MoveConfig move_config;
     TurnConfig turn_config;
     Options df_options;
-    Point prev_speeds = (0.0, 0.0);
+    Point prev_speeds = {0.0, 0.0};
 
     pros::Task* chassis_task = nullptr;
     pros::Mutex chassis_mutex;
 
-    enum Motion { MOVE_POINT, MOVE_POSE, TURN, IDLE };
+    enum Motion { MOVE, TURN, IDLE };
     struct Command {
         Motion motion = IDLE;
-        Pose target = (0.0, 0.0, 0.0);
+        Pose target = {0.0, 0.0, 0.0};
         Options options = {};
     };
 
@@ -74,22 +74,19 @@ class Chassis {
             Options default_options = {});
     ~Chassis();
 
+    void start();
     void task();
     void wait();
 
-    void move_task(Point target, Options options = {});
-    void move(Point target, Options options = {});
-    void move(double target, Options options = {});
-    void turn_task(Point target, Options options = {});
-    void turn(Point target, Options options = {});
-    void turn(double target, Options options = {});
+    void move(Pose target, Options options = {}, Options override = {});
+    void turn(Point target, Options options = {}, Options override = {});
 
     void tank(double left_speed, double right_speed);
     void tank(Point speeds);
     void tank(pros::Controller& controller);
     void arcade(double linear, double angular);
     void arcade(pros::Controller& controller);
-    void stop(bool stop_task = true);
+    void stop();
 
     void set_brake_mode(pros::motor_brake_mode_e_t mode);
 };

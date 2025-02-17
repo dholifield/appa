@@ -13,7 +13,18 @@ Chassis::Chassis(std::initializer_list<int8_t> left_motors,
       turn_config(turn_config),
       df_options(default_options) {}
 
-Chassis::~Chassis() { stop(true); }
+Chassis::~Chassis() {
+    stop();
+    if (chassis_task) {
+        chassis_task->remove();
+        delete chassis_task;
+        chassis_task = nullptr;
+    }
+}
+
+void Chassis::start() {
+    if (chassis_task == nullptr) chassis_task = new pros::Task([this] { task(); }, "chassis_task");
+}
 
 void Chassis::task() {
     bool driving = false;
@@ -23,9 +34,13 @@ void Chassis::task() {
 
     // chassis loop
     while (true) {
-        // wait for notify
+        // wait for motion
         while (true) {
-            /// TODO: wait for notify
+            chassis_mutex.take();
+            Motion current_motion = cmd.motion;
+            chassis_mutex.give();
+            if (current_motion != IDLE) break;
+            pros::delay(dt);
         }
 
         // set variables
@@ -41,6 +56,7 @@ void Chassis::task() {
         Direction dir = opts.dir.value();
         const bool auto_dir = dir == AUTO;
         const Direction turn_dir = opts.turn.value();
+        const double lead = opts.lead.value();
         const double exit = opts.exit.value();
         const double max_speed = opts.speed.value();
         const double accel_step = opts.accel.value() * dt / 1000;
@@ -53,34 +69,28 @@ void Chassis::task() {
         Point error, carrot, speeds;
         double lin_speed, ang_speed;
 
-        /// TODO: confirm control loop
         // control loop
         while (true) {
             // get error
-            pose = odom.get();
-            if (motion == MOVE_POSE || MOVE_POINT) {
-                if (motion == MOVE_POSE) {
-                    // calculate carrot point and set to target
-                } else
-                    carrot = target.p();
-                error = (pose.dist(carrot), pose.angle(carrot));
-            } else if (motion == TURN) {
+            if (motion == MOVE) { // for move
+                error = (pose.dist(target.p()), pose.angle(target.p()));
+                if (target.theta != NAN) { // for move to pose
+                    carrot = target.p() - Point{error.linear * lead, 0}.rotate(target.theta);
+                    error = (pose.dist(carrot), pose.angle(carrot));
+                }
+            } else if (motion == TURN) { // for turn
                 error = (0.0, std::fmod(target.theta - pose.theta, M_PI));
-            }
+            } else
+                break;
 
             // determine direction
-            if (motion == MOVE_POSE || MOVE_POINT) {
-                if (auto_dir) {
-                    if (fabs(error.angular) > M_PI_2)
-                        dir = REVERSE;
-                    else
-                        dir = FORWARD;
-                }
+            if (motion == MOVE) { // for move
+                if (auto_dir) dir = fabs(error.angular) > M_PI_2 ? REVERSE : FORWARD;
                 if (dir == REVERSE) {
                     error.angular += error.angular > 0 ? -M_PI : M_PI;
                     error.linear *= -1;
                 }
-            } else if (motion == TURN) {
+            } else if (motion == TURN) { // for turn
                 if (turn_dir == CW && error.angular < 0)
                     error.angular += 2 * M_PI;
                 else if (turn_dir == CCW && error.angular > 0)
@@ -90,6 +100,14 @@ void Chassis::task() {
             // update PID
             lin_speed = lin_PID.update(error.linear, dt);
             ang_speed = ang_PID.update(error.angular, dt);
+
+            // max speed if thru
+            if (thru) {
+                if (motion == MOVE)
+                    lin_speed = lin_speed > 0 ? max_speed : -max_speed;
+                else if (motion == TURN)
+                    ang_speed = ang_speed > 0 ? max_speed : -max_speed;
+            }
 
             // limit speeds
             lin_speed = limit(lin_speed, max_speed);
@@ -126,234 +144,127 @@ void Chassis::task() {
             // delay task
             pros::c::task_delay_until(&now, dt);
         }
+        stop();
     }
 }
 
 void Chassis::wait() {
-    // implement
+    while (true) {
+        chassis_mutex.take();
+        Motion m = cmd.motion;
+        chassis_mutex.give();
+        if (m == IDLE) break;
+        pros::delay(10);
+    }
 }
 
-void Chassis::move_task(Point target, Options opts) {
-    // set up variables
-    Direction dir = opts.dir.value_or(df_options.dir.value_or(AUTO));
-    bool auto_dir = dir == AUTO;
+void Chassis::move(Pose target, Options opts, Options override) {
+    chassis_mutex.take();
+    Command current_cmd = cmd;
+    chassis_mutex.give();
 
-    double exit = opts.exit.value_or(move_config.exit);
-    // int settle = opts.settle.value_or(df_options.settle.value_or(0));
-    int timeout = opts.timeout.value_or(df_options.timeout.value_or(0));
+    // stop if motion is currently running
+    if (current_cmd.motion != IDLE) {
+        stop();
+        pros::delay(10);
+    }
 
-    double max_speed = opts.speed.value_or(move_config.speed);
-    double accel = opts.accel.value_or(df_options.accel.value_or(0));
+    // determine options
+    Direction dir = override.dir.value_or(opts.dir.value_or(df_options.dir.value_or(AUTO)));
+    Direction turn = AUTO;
 
-    PID lin_PID(opts.lin_PID.value_or(move_config.lin_PID));
-    PID ang_PID(opts.ang_PID.value_or(move_config.ang_PID));
+    double exit = override.exit.value_or(opts.exit.value_or(move_config.exit));
+    int timeout = override.timeout.value_or(opts.timeout.value_or(df_options.timeout.value_or(0)));
 
-    bool thru = opts.thru.value_or(df_options.thru.value_or(false));
-    bool relative = opts.relative.value_or(df_options.relative.value_or(false));
+    double speed = override.speed.value_or(opts.speed.value_or(move_config.speed));
+    double accel = override.accel.value_or(opts.accel.value_or(df_options.accel.value_or(0)));
+    double lead = override.lead.value_or(opts.lead.value_or(move_config.lead));
 
+    Gains lin_PID = override.lin_PID.value_or(opts.lin_PID.value_or(move_config.lin_PID));
+    Gains ang_PID = override.ang_PID.value_or(opts.ang_PID.value_or(move_config.ang_PID));
+
+    bool thru = override.thru.value_or(opts.thru.value_or(df_options.thru.value_or(false)));
+    bool async = override.async.value_or(opts.async.value_or(df_options.async.value_or(false)));
+    bool relative =
+        override.relative.value_or(opts.relative.value_or(df_options.relative.value_or(false)));
+    if (target.y == NAN) relative = true;
+
+    Options final_opts(
+        dir, turn, exit, timeout, speed, accel, lead, lin_PID, ang_PID, thru, async, relative);
+
+    // update target
+    if (target.theta != NAN) target.theta = to_rad(target.theta);
+
+    // if relative move
+    if (relative) {
+        Pose pose = odom.get();
+        if (target.y == NAN) {
+            target = Pose{pose.p() + Point{target.x, 0}.rotate(pose.theta), 0.0};
+        } else
+            target += pose;
+    }
+
+    // set command
+    chassis_mutex.take();
+    cmd = Command(MOVE, target, final_opts);
+    chassis_mutex.give();
+
+    // wait if async
+    if (async) wait();
+}
+
+void Chassis::turn(Point target, Options opts, Options override) {
+    chassis_mutex.take();
+    Command current_cmd = cmd;
+    chassis_mutex.give();
+
+    // stop if motion is currently running
+    if (current_cmd.motion != IDLE) {
+        stop();
+        pros::delay(10);
+    }
+
+    // determine options
+    Direction dir = override.dir.value_or(opts.dir.value_or(df_options.dir.value_or(AUTO)));
+    Direction turn = override.dir.value_or(opts.turn.value_or(df_options.turn.value_or(AUTO)));
+
+    double exit = override.exit.value_or(opts.exit.value_or(move_config.exit));
+    int timeout =
+        override.timeout.value_or(opts.timeout.value_or(df_options.timeout.value_or(0.0)));
+
+    double speed = override.speed.value_or(opts.speed.value_or(move_config.speed));
+    double accel = override.accel.value_or(opts.accel.value_or(df_options.accel.value_or(0.0)));
+    double lead = 0.0;
+
+    Gains lin_PID;
+    Gains ang_PID = override.ang_PID.value_or(opts.ang_PID.value_or(move_config.ang_PID));
+
+    bool thru = override.thru.value_or(opts.thru.value_or(df_options.thru.value_or(false)));
+    bool async = override.async.value_or(opts.async.value_or(df_options.async.value_or(false)));
+    bool relative =
+        override.relative.value_or(opts.relative.value_or(df_options.relative.value_or(false)));
+
+    Options final_opts(
+        dir, turn, exit, timeout, speed, accel, lead, lin_PID, ang_PID, thru, async, relative);
+
+    // update target
+    Pose final_target;
     Pose pose = odom.get();
-    Point error = (pose.dist(target), pose.angle(target));
-
-    lin_PID.reset(error.linear);
-    ang_PID.reset(error.angular);
-
-    double lin_speed, ang_speed;
-    Point speeds;
-
-    // if relative motion
-    if (relative) target = pose.p() + target.rotate(pose.theta);
-
-    // timing
-    int dt = 10; // ms
-    int start_time = pros::millis();
-    uint32_t now = pros::millis();
-
-    double accel_step = accel * dt / 1000;
-
-    // control loop
-    while (true) {
-        // calculate error
-        pose = odom.get();
-
-        error = (pose.dist(target), pose.angle(target));
-
-        // determine direction
-        if (auto_dir) {
-            if (fabs(error.angular) > M_PI_2)
-                dir = REVERSE;
-            else
-                dir = FORWARD;
-        }
-        if (dir == REVERSE) {
-            error.angular += error.angular > 0 ? -M_PI : M_PI;
-            error.linear *= -1;
-        }
-
-        // calculate PID
-        lin_speed = thru ? max_speed : lin_PID.update(error.linear, dt);
-        ang_speed = ang_PID.update(error.angular, dt);
-
-        // apply limits
-        lin_speed = limit(lin_speed, max_speed);
-        ang_speed = limit(ang_speed, max_speed);
-
-        // calculate motor speeds
-        speeds = (lin_speed - ang_speed, lin_speed + ang_speed);
-
-        // scale motor speeds
-        if (speeds.left > max_speed) {
-            speeds.left = max_speed;
-            speeds.right *= max_speed / speeds.left;
-        }
-        if (speeds.right > max_speed) {
-            speeds.right = max_speed;
-            speeds.left *= max_speed / speeds.right;
-        }
-
-        // limit acceleration
-        if (accel_step) {
-            if (speeds.left - prev_speeds.left > accel_step)
-                speeds.left = prev_speeds.left + accel_step;
-            if (speeds.right - prev_speeds.right > accel_step)
-                speeds.right = prev_speeds.right + accel_step;
-        }
-
-        // set motor speeds
-        tank(speeds);
-
-        // check exit conditions
-        if (timeout > 0 && pros::millis() - start_time > timeout) break;
-        if (error.linear < exit) break;
-
-        // delay task
-        pros::c::task_delay_until(&now, dt);
-    }
-    stop(false);
-}
-
-void Chassis::move(Point target, Options opts) {
-    // stop task if robot is already moving
-    if (chassis_task) {
-        chassis_task->remove();
-        delete chassis_task;
-    }
-
-    // start task
-    if (opts.async.value_or(df_options.async.value_or(false))) {
-        chassis_task =
-            new pros::Task([this, target, opts] { move_task(target, opts); }, "chassis_task");
+    if (target.y == NAN) {
+        final_target.theta = to_rad(target.x);
+        if (relative) final_target.theta += pose.theta;
     } else {
-        move_task(target, opts);
-    }
-}
-
-void Chassis::move(double target, Options options) {
-    options.relative = true;
-    move({target, 0}, options);
-}
-
-void Chassis::turn_task(double target, Options opts) {
-    // set up variables
-    Direction dir = opts.dir.value_or(df_options.dir.value_or(AUTO));
-    Direction turn_dir = opts.turn.value_or(df_options.turn.value_or(AUTO));
-
-    double exit = opts.exit.value_or(turn_config.exit);
-    // int settle = opts.settle.value_or(df_turn_opts.settle.value_or(250));
-    int timeout = opts.timeout.value_or(df_options.timeout.value_or(0));
-
-    double max_speed = opts.speed.value_or(turn_config.speed);
-    double accel = opts.accel.value_or(df_options.accel.value_or(0));
-
-    PID ang_PID(opts.ang_PID.value_or(turn_config.ang_PID));
-
-    bool thru = opts.thru.value_or(df_options.thru.value_or(false));
-    bool relative = opts.relative.value_or(df_options.relative.value_or(false));
-
-    double heading = odom.get().theta;
-    double error = heading - target;
-
-    ang_PID.reset(error);
-
-    double ang_speed;
-    Point speeds;
-
-    // if relative motion
-    if (relative) target += heading;
-    if (dir == REVERSE) target += M_PI;
-
-    // timing
-    int dt = 10; // ms
-    int start_time = pros::millis();
-    uint32_t now = pros::millis();
-
-    double accel_step = accel * dt / 1000;
-
-    // control loop
-    while (true) {
-        // calculate error
-        heading = odom.get().theta;
-
-        error = std::fmod(target - heading, M_PI);
-
-        // determine direction
-        if (turn_dir == CW && error < 0)
-            error += 2 * M_PI;
-        else if (turn_dir == CCW && error > 0)
-            error -= 2 * M_PI;
-
-        // calculate PID
-        ang_speed = thru ? (error > 0 ? max_speed : -max_speed) : ang_PID.update(error, dt);
-
-        // apply limits
-        ang_speed = limit(ang_speed, max_speed);
-
-        // calculate motor speeds
-        speeds = (-ang_speed, ang_speed);
-
-        // limit acceleration
-        if (accel_step) {
-            if (speeds.left - prev_speeds.left > accel_step)
-                speeds.left = prev_speeds.left + accel_step;
-            if (speeds.right - prev_speeds.right > accel_step)
-                speeds.right = prev_speeds.right + accel_step;
-        }
-
-        // set motor speeds
-        tank(speeds);
-
-        // check exit conditions
-        if (timeout > 0 && pros::millis() - start_time > timeout) break;
-        if (error < exit) break;
-
-        // delay task
-        pros::c::task_delay_until(&now, dt);
-    }
-    stop(false);
-}
-
-void Chassis::turn(double target, Options opts) {
-    // stop task if robot is already moving
-    if (chassis_task) {
-        chassis_task->remove();
-        delete chassis_task;
+        if (relative) target += pose.p();
+        final_target.theta = pose.p().angle(target);
     }
 
-    // convert to radians
-    target = to_rad(target);
+    // set command
+    chassis_mutex.take();
+    cmd = Command(TURN, final_target, final_opts);
+    chassis_mutex.give();
 
-    // start task
-    if (opts.async.value_or(df_options.async.value_or(false))) {
-        chassis_task =
-            new pros::Task([this, target, opts] { turn_task(target, opts); }, "chassis_task");
-    } else {
-        turn_task(target, opts);
-    }
-}
-
-void Chassis::turn(Point target, Options options) {
-    double heading = to_deg(odom.get().p().angle(target));
-
-    turn(heading, options);
+    // wait if async
+    if (async) wait();
 }
 
 void Chassis::tank(double left_speed, double right_speed) {
@@ -383,13 +294,10 @@ void Chassis::arcade(pros::Controller& controller) {
     arcade(linear, angular);
 }
 
-void Chassis::stop(bool stop_task) {
-    if (stop_task && chassis_task) {
-        chassis_task->remove();
-        delete chassis_task;
-        chassis_task = nullptr;
-    }
+void Chassis::stop() {
     tank(0, 0);
+    std::lock_guard<pros::Mutex> lock(chassis_mutex);
+    cmd.motion = IDLE;
 }
 
 void Chassis::set_brake_mode(pros::motor_brake_mode_e_t mode) {
