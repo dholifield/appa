@@ -11,7 +11,7 @@ namespace appa {
 /* Odom */
 class Odom {
   private:
-    Pose odom_pose = (0, 0, 0);
+    Pose odom_pose = {0.0, 0.0, 0.0};
     pros::Mutex odom_mutex;
     pros::Task* odom_task = nullptr;
 
@@ -52,14 +52,17 @@ class Chassis {
   private:
     pros::MotorGroup left_motors, right_motors;
     Odom& odom;
-    MoveConfig move_config;
-    TurnConfig turn_config;
-    Options df_options;
-    Point prev_speeds = (0.0, 0.0);
+    Options df_move, df_turn;
+    Point prev_speeds = {0.0, 0.0};
 
     pros::Task* chassis_task = nullptr;
     pros::Mutex chassis_mutex;
     std::atomic<bool> is_driving{false};
+
+    enum Motion { MOVE, TURN };
+
+    void motion_task(Pose target, Options options, Motion motion);
+    void motion_run(Pose target, Options options, Motion motion);
 
   public:
     Chassis(std::initializer_list<int8_t> left_motors, std::initializer_list<int8_t> right_motors,
@@ -70,12 +73,8 @@ class Chassis {
     void task();
     void wait();
 
-    void move_task(Point target, Options options);
-    void move(Point target, Options options = {});
-    void move(double target, Options options = {});
-    void turn_task(double target, Options options);
-    void turn(Point target, Options options = {});
-    void turn(double target, Options options = {});
+    void move(Pose target, Options options = {}, Options override = {});
+    void turn(Point target, Options options = {}, Options override = {});
 
     void tank(double left_speed, double right_speed);
     void tank(Point speeds);

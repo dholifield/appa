@@ -97,6 +97,7 @@ Options contain different parameters for a chassis movement. Options, as the nam
 
 _*these options will be ignored in the default_options as the configurations take precedence_\
 _(any options set with default_options will override the defaults above unless otherwise noted)_
+<!-- add about overriding options with << and >> -->
 
 ### Movements
 Currently, there are 2 different motion commands: `move(Point/Distance, Options)`, and `turn(Point/Angle, Options)`. This makes it very easy to control the chassis. The movement parameters will automatically default to configurations or default options for those not specified. Movements can be done like:

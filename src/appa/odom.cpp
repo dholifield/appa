@@ -23,7 +23,7 @@ Odom::Odom(std::array<int8_t, 2> x_port, std::array<int8_t, 2> y_port, int8_t im
 
 void Odom::task() {
     printf("odom task started\n");
-    Pose prev_track = (0, 0, 0);
+    Pose prev_track = {0, 0, 0};
     uint32_t now = pros::millis();
 
     while (true) {
@@ -66,7 +66,7 @@ void Odom::start() {
     imu.set_data_rate(5);
     printf("done\n");
 
-    set((0, 0, 0));
+    set({0, 0, 0});
     if (odom_task == nullptr)
         odom_task = new pros::Task([this] { task(); }, 16, TASK_STACK_DEPTH_DEFAULT, "odom_task");
 }

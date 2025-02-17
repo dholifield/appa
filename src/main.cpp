@@ -9,6 +9,7 @@ appa::Odom odom({2, 3}, // x tracker port
 
 appa::MoveConfig move_config(1.0,         // exit (inches)
                              85,          // speed (%)
+                             0.5,         // lead (%)
                              {10, 0, 0},  // linear pid gains
                              {50, 0, 0}); // angular pid gains
 
@@ -36,16 +37,17 @@ void disabled() {}
 void competition_initialize() {}
 
 appa::Options fast = {.speed = 100, .accel = 0, .thru = true};
-appa::Options precise = {.speed = 50, .accel = 20, .lin_PID = (5, 0, 0), .ang_PID = (2, 0, 0)};
+appa::Options precise = {
+    .speed = 50, .accel = 20, .lin_PID = appa::Gains{5, 0, 0}, .ang_PID = appa::Gains{2, 0, 0}};
 
 void autonomous() {
     printf("autonomous started\n");
     appa.set_brake_mode(pros::E_MOTOR_BRAKE_HOLD);
     odom.set(0, 0, 90);
 
-    appa.move((0, 24), {.speed = 100});
-    appa.move((50, 0), fast);
-    appa.move((10, 0), precise);
+    appa.move({0, 24}, {.speed = 100});
+    appa.move({50, 0}, fast);
+    appa.move({10, 0, 90}, precise, {.lead = 0.3});
 }
 
 void opcontrol() {

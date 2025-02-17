@@ -29,11 +29,11 @@ struct Options {
     std::optional<Direction> turn;
 
     std::optional<double> exit;
-    // std::optional<int> settle;
     std::optional<int> timeout;
 
     std::optional<double> speed;
     std::optional<double> accel;
+    std::optional<double> lead;
 
     std::optional<Gains> lin_PID;
     std::optional<Gains> ang_PID;
@@ -41,10 +41,51 @@ struct Options {
     std::optional<bool> async;
     std::optional<bool> thru;
     std::optional<bool> relative;
+
+    static Options defaults() {
+        return Options(AUTO, AUTO, 0, 0, 0, 0, 0, Gains(), Gains(), false, false, false);
+    }
+
+    Options operator<<(const Options& other) const {
+        Options result = *this;
+
+        if (other.dir) result.dir = other.dir;
+        if (other.turn) result.turn = other.turn;
+        if (other.exit) result.exit = other.exit;
+        if (other.timeout) result.timeout = other.timeout;
+        if (other.speed) result.speed = other.speed;
+        if (other.accel) result.accel = other.accel;
+        if (other.lead) result.lead = other.lead;
+        if (other.lin_PID) result.lin_PID = other.lin_PID;
+        if (other.ang_PID) result.ang_PID = other.ang_PID;
+        if (other.async) result.async = other.async;
+        if (other.thru) result.thru = other.thru;
+        if (other.relative) result.relative = other.relative;
+
+        return result;
+    }
+    Options operator>>(const Options& other) const { return other << *this; }
+
+    // void unpack(Direction& dir, Direction& turn, double& exit, int& timeout, double& speed,
+    //             double& accel, Gains& lin_PID, Gains& ang_PID, bool& async, bool& thru,
+    //             bool& relative) {
+    //     if (this->dir) dir = this->dir.value();
+    //     if (this->turn) turn = this->turn.value();
+    //     if (this->exit) exit = this->exit.value();
+    //     if (this->timeout) timeout = this->timeout.value();
+    //     if (this->speed) speed = this->speed.value();
+    //     if (this->accel) accel = this->accel.value();
+    //     if (this->lead) lead = this->lead.value();
+    //     if (this->lin_PID) lin_PID = this->lin_PID.value();
+    //     if (this->ang_PID) ang_PID = this->ang_PID.value();
+    //     if (this->async) async = this->async.value();
+    //     if (this->thru) thru = this->thru.value();
+    //     if (this->relative) relative = this->relative.value();
+    // }
 };
 
 struct MoveConfig {
-    double exit, speed;
+    double exit, speed, lead;
     Gains lin_PID, ang_PID;
 };
 
@@ -62,7 +103,7 @@ struct Point {
     };
     // clang-format on
 
-    Point(double x = 0, double y = 0) : x(x), y(y) {}
+    Point(double x = NAN, double y = NAN) : x(x), y(y) {}
 
     Point operator+(const Point& other) const { return Point({x + other.x, y + other.y}); }
     Point operator-(const Point& other) const { return Point({x - other.x, y - other.y}); }
@@ -96,7 +137,7 @@ struct Point {
 struct Pose {
     double x, y, theta;
 
-    Pose(double x = 0, double y = 0, double theta = 0) : x(x), y(y), theta(theta) {}
+    Pose(double x = NAN, double y = NAN, double theta = NAN) : x(x), y(y), theta(theta) {}
     Pose(Point p, double theta) : x(p.x), y(p.y), theta(theta) {}
 
     Pose operator+(const Point& p) const { return Pose({x + p.x, y + p.y}, theta); }
