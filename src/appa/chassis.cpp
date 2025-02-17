@@ -15,8 +15,122 @@ Chassis::Chassis(std::initializer_list<int8_t> left_motors,
 
 Chassis::~Chassis() { stop(true); }
 
+void Chassis::task() {
+    bool driving = false;
+
+    const int dt = 10; // ms
+    uint32_t now = pros::millis();
+
+    // chassis loop
+    while (true) {
+        // wait for notify
+        while (true) {
+            /// TODO: wait for notify
+        }
+
+        // set variables
+        chassis_mutex.take();
+        const Motion motion = cmd.motion;
+        const Pose target = cmd.target;
+        const Options opts = cmd.options;
+        chassis_mutex.give();
+
+        uint32_t start_time = pros::millis();
+        const int timeout = opts.timeout.value();
+
+        Direction dir = opts.dir.value();
+        const bool auto_dir = dir == AUTO;
+        const Direction turn_dir = opts.turn.value();
+        const double exit = opts.exit.value();
+        const double max_speed = opts.speed.value();
+        const double accel_step = opts.accel.value() * dt / 1000;
+        const bool thru = opts.thru.value();
+
+        PID lin_PID(opts.lin_PID.value());
+        PID ang_PID(opts.ang_PID.value());
+
+        Pose pose;
+        Point error, carrot, speeds;
+        double lin_speed, ang_speed;
+
+        /// TODO: confirm control loop
+        // control loop
+        while (true) {
+            // get error
+            pose = odom.get();
+            if (motion == MOVE_POSE || MOVE_POINT) {
+                if (motion == MOVE_POSE) {
+                    // calculate carrot point and set to target
+                } else
+                    carrot = target.p();
+                error = (pose.dist(carrot), pose.angle(carrot));
+            } else if (motion == TURN) {
+                error = (0.0, std::fmod(target.theta - pose.theta, M_PI));
+            }
+
+            // determine direction
+            if (motion == MOVE_POSE || MOVE_POINT) {
+                if (auto_dir) {
+                    if (fabs(error.angular) > M_PI_2)
+                        dir = REVERSE;
+                    else
+                        dir = FORWARD;
+                }
+                if (dir == REVERSE) {
+                    error.angular += error.angular > 0 ? -M_PI : M_PI;
+                    error.linear *= -1;
+                }
+            } else if (motion == TURN) {
+                if (turn_dir == CW && error.angular < 0)
+                    error.angular += 2 * M_PI;
+                else if (turn_dir == CCW && error.angular > 0)
+                    error.angular -= 2 * M_PI;
+            }
+
+            // update PID
+            lin_speed = lin_PID.update(error.linear, dt);
+            ang_speed = ang_PID.update(error.angular, dt);
+
+            // limit speeds
+            lin_speed = limit(lin_speed, max_speed);
+            ang_speed = limit(ang_speed, max_speed);
+
+            // calculate motor speeds
+            speeds = (lin_speed - ang_speed, lin_speed + ang_speed);
+
+            // scale motor speeds
+            if (speeds.left > max_speed) {
+                speeds.left = max_speed;
+                speeds.right *= max_speed / speeds.left;
+            }
+            if (speeds.right > max_speed) {
+                speeds.right = max_speed;
+                speeds.left *= max_speed / speeds.right;
+            }
+
+            // limit acceleration
+            if (accel_step) {
+                if (speeds.left - prev_speeds.left > accel_step)
+                    speeds.left = prev_speeds.left + accel_step;
+                if (speeds.right - prev_speeds.right > accel_step)
+                    speeds.right = prev_speeds.right + accel_step;
+            }
+
+            // set motor speeds
+            tank(speeds);
+
+            // check exit conditions
+            if (timeout > 0 && pros::millis() - start_time > timeout) break;
+            if (error.linear < exit) break;
+
+            // delay task
+            pros::c::task_delay_until(&now, dt);
+        }
+    }
+}
+
 void Chassis::wait() {
-    if (chassis_task) { chassis_task->join(); }
+    // implement
 }
 
 void Chassis::move_task(Point target, Options opts) {
@@ -70,7 +184,10 @@ void Chassis::move_task(Point target, Options opts) {
             else
                 dir = FORWARD;
         }
-        if (dir == REVERSE) error.angular += error.angular > 0 ? -M_PI : M_PI;
+        if (dir == REVERSE) {
+            error.angular += error.angular > 0 ? -M_PI : M_PI;
+            error.linear *= -1;
+        }
 
         // calculate PID
         lin_speed = thru ? max_speed : lin_PID.update(error.linear, dt);

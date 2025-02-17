@@ -38,8 +38,8 @@ struct Options {
     std::optional<Gains> lin_PID;
     std::optional<Gains> ang_PID;
 
-    std::optional<bool> async;
     std::optional<bool> thru;
+    std::optional<bool> async;
     std::optional<bool> relative;
 };
 
@@ -62,7 +62,7 @@ struct Point {
     };
     // clang-format on
 
-    Point(double x = 0, double y = 0) : x(x), y(y) {}
+    Point(double x = 0.0, double y = 0.0) : x(x), y(y) {}
 
     Point operator+(const Point& other) const { return Point({x + other.x, y + other.y}); }
     Point operator-(const Point& other) const { return Point({x - other.x, y - other.y}); }
@@ -96,7 +96,7 @@ struct Point {
 struct Pose {
     double x, y, theta;
 
-    Pose(double x = 0, double y = 0, double theta = 0) : x(x), y(y), theta(theta) {}
+    Pose(double x = 0.0, double y = 0.0, double theta = 0.0) : x(x), y(y), theta(theta) {}
     Pose(Point p, double theta) : x(p.x), y(p.y), theta(theta) {}
 
     Pose operator+(const Point& p) const { return Pose({x + p.x, y + p.y}, theta); }

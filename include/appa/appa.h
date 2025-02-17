@@ -41,7 +41,6 @@ class Odom {
     void set_x(double x);
     void set_y(double y);
     void set_theta(double theta);
-
     void set_offset(Point linear);
 
     void debug();
@@ -59,14 +58,15 @@ class Chassis {
 
     pros::Task* chassis_task = nullptr;
     pros::Mutex chassis_mutex;
-    std::atomic<bool> is_driving{false};
 
-    enum Motion { MOVE, TURN };
+    enum Motion { MOVE_POINT, MOVE_POSE, TURN, IDLE };
     struct Command {
-        Motion motion;
-        Pose target;
-        Options options;
+        Motion motion = IDLE;
+        Pose target = (0.0, 0.0, 0.0);
+        Options options = {};
     };
+
+    Command cmd;
 
   public:
     Chassis(std::initializer_list<int8_t> left_motors, std::initializer_list<int8_t> right_motors,
@@ -77,10 +77,10 @@ class Chassis {
     void task();
     void wait();
 
-    void move_task(Point target, Options options);
+    void move_task(Point target, Options options = {});
     void move(Point target, Options options = {});
     void move(double target, Options options = {});
-    void turn_task(double target, Options options);
+    void turn_task(Point target, Options options = {});
     void turn(Point target, Options options = {});
     void turn(double target, Options options = {});
 
