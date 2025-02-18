@@ -158,7 +158,7 @@ void Chassis::move(Pose target, Options opts, Options override) {
     opts = df_move << opts << override;
 
     // run motiong
-    motion_task(target, opts, MOVE);
+    motion_run(target, opts, MOVE);
 }
 
 void Chassis::turn(Point target, Options opts, Options override) {
@@ -168,10 +168,10 @@ void Chassis::turn(Point target, Options opts, Options override) {
     else target_pose = target;
 
     // merge options
-    opts = df_move << opts << override;
+    opts = df_turn << opts << override;
 
     // run motiong
-    motion_task(target_pose, opts, TURN);
+    motion_run(target_pose, opts, TURN);
 }
 
 void Chassis::tank(double left_speed, double right_speed) {
