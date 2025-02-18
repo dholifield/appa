@@ -115,7 +115,7 @@ struct Point {
         Point diff = *this - other;
         return sqrt(diff.x * diff.x + diff.y * diff.y);
     }
-    double angle(const Point& other, double offset = 0.0) const {
+    double angle(const Point& other, const double offset = 0.0) const {
         Point diff = other - *this;
         return std::fmod(atan2(diff.y, diff.x) - offset, M_PI);
     }
@@ -147,6 +147,7 @@ struct Pose {
         return sqrt(diff.x * diff.x + diff.y * diff.y);
     }
     double angle(const Point& other) const { return p().angle(other, theta); }
+    Point project(const double dist) const { return p() + Point{dist, 0}.rotate(theta); }
 };
 
 double to_rad(double deg);

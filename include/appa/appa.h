@@ -58,10 +58,11 @@ class Chassis {
     pros::Task* chassis_task = nullptr;
     pros::Mutex chassis_mutex;
 
-    enum Motion { MOVE, TURN };
+    enum Motion { MOVE, PATH, TURN };
 
     void motion_task(Pose target, Options options, Motion motion);
-    void motion_run(Pose target, Options options, Motion motion);
+    void motion_handler(Pose target, Options options, Motion motion);
+    void motion_handler(std::vector<Pose> path, Options options);
 
   public:
     Chassis(std::initializer_list<int8_t> left_motors, std::initializer_list<int8_t> right_motors,
@@ -73,6 +74,7 @@ class Chassis {
     void wait();
 
     void move(Pose target, Options options = {}, Options override = {});
+    void move(std::vector<Point> path, Options options = {}, Options override = {});
     void turn(Point target, Options options = {}, Options override = {});
 
     void tank(double left_speed, double right_speed);

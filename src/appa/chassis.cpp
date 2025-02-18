@@ -22,7 +22,11 @@ Chassis::Chassis(std::initializer_list<int8_t> left_motors,
 Chassis::~Chassis() { stop(true); }
 
 void Chassis::wait() {
-    if (chassis_task) { chassis_task->join(); }
+    if (chassis_task) {
+        chassis_task->join();
+        chassis_task->remove();
+        delete chassis_task;
+    }
 }
 
 void Chassis::motion_task(Pose target, Options opts, Motion motion) {
@@ -63,7 +67,8 @@ void Chassis::motion_task(Pose target, Options opts, Motion motion) {
             // error
             error = {pose.dist(target.p()), pose.angle(target.p())};
             if (target.theta != NAN) { // move to pose
-                carrot = target.p() - Point{error.linear * lead, 0}.rotate(target.theta);
+                carrot = target.project(-error.linear * lead);
+                // carrot = target.project(-error.linear + lead);
                 error = {pose.dist(carrot), pose.angle(carrot)};
             }
             // direction
@@ -131,7 +136,7 @@ void Chassis::motion_task(Pose target, Options opts, Motion motion) {
     if (!thru) stop(false);
 }
 
-void Chassis::motion_run(Pose target, Options opts, Motion motion) {
+void Chassis::motion_handler(Pose target, Options opts, Motion motion) {
     // stop task if robot is already moving
     if (chassis_task) {
         chassis_task->remove();
@@ -146,35 +151,73 @@ void Chassis::motion_run(Pose target, Options opts, Motion motion) {
         motion_task(target, opts, motion);
     }
 }
-
-void Chassis::move(Pose target, Options opts, Options override) {
-    // configure target
-    if (target.y == NAN) {
-        target.y = 0.0;
-        opts.relative = true;
+void Chassis::motion_handler(std::vector<Pose> path, Options options) {
+    // stop task if robot is already moving
+    if (chassis_task) {
+        chassis_task->remove();
+        delete chassis_task;
     }
-    if (target.theta != NAN) target.theta = to_rad(target.theta);
+    // follow path
+    auto follow_path = [this, &path, &options] {
+        // code
+        for (int i = 0; i < path.size() - 1; ++i) {
+            motion_task(path[i], options << Options{.thru = true}, PATH);
+        }
+        motion_task(path[path.size() - 1], options, PATH);
+    };
 
-    // merge options
-    opts = df_move << opts << override;
-
-    // run motion
-    motion_run(target, opts, MOVE);
+    if (options.async.value()) {
+        chassis_task = new pros::Task(follow_path, "chassis_task");
+    } else {
+        follow_path();
+    }
 }
 
-void Chassis::turn(Point target, Options opts, Options override) {
+void Chassis::move(Pose target, Options options, Options override) {
+    // configure target
+    if (target.y == NAN) { // relative straight
+        target.y = 0.0;
+        options.relative = true;
+        options.dir = AUTO;
+    }
+    if (target.theta != NAN) target.theta = to_rad(target.theta); // go to pose
+
+    // merge options
+    options = df_move << options << override;
+
+    // run motion
+    motion_handler(target, options, MOVE);
+}
+
+void Chassis::move(std::vector<Point> path, Options options, Options override) {
+    // convert list of points to poses
+    std::vector<Pose> poses;
+    poses.push_back({path[0], NAN});
+    for (int i = 1; i < path.size(); i++) {
+        double heading = path[i].angle(path[i - 1]);
+        poses.push_back({path[i], heading});
+    }
+
+    // merge options
+    options = df_move << options << override;
+
+    // run motion
+    motion_handler(poses, options);
+}
+
+void Chassis::turn(Point target, Options options, Options override) {
     // configure target
     Pose target_pose;
     if (target.y == NAN) target_pose.theta = to_rad(target.x);
     else target_pose = target;
 
     // merge options
-    opts <<= override;
-    if (opts.exit.has_value()) opts.exit = to_rad(opts.exit.value());
-    opts >>= df_turn;
+    options <<= override;
+    if (options.exit.has_value()) options.exit = to_rad(options.exit.value());
+    options >>= df_turn;
 
     // run motion
-    motion_run(target_pose, opts, TURN);
+    motion_handler(target_pose, options, TURN);
 }
 
 void Chassis::tank(double left_speed, double right_speed) {
@@ -224,4 +267,29 @@ void Chassis::set_brake_mode(pros::motor_brake_mode_e_t mode) {
  * TODO: add settle time
  * TODO: implement settle exit for stuck robot
  * TODO: add wait until error for async movement
+ */
+
+/**
+ * TESTING:
+ * back to back movements. confirm tasks operate as exepected
+ * asynchronous movement. async then wait. async then cancel with new movement
+ * test all motions
+ *      move distance
+ *      move to point
+ *      move to pose
+ *      turn to heading
+ *      turn to point
+ *      follow path
+ * test all options
+ *      dir - move (point + pose) and turn (either)
+ *      turn - turn (CW and CCW)
+ *      exit - move (any) and turn (any)
+ *      timeout - either
+ *      speed - either
+ *      accel - either
+ *      lead - move (pose)
+ *      lin_PID - move (any)
+ *      ang_PID - move (any) and turn (any)
+ *      thru - move (point + pose) and turn (any)
+ *      relative - move (point + pose) and turn (heading + point)
  */
