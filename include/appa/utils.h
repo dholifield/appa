@@ -71,8 +71,8 @@ struct Options {
         return result;
     }
     Options operator>>(const Options& other) const { return other << *this; }
-    Options operator<<=(const Options& other) { *this = *this << other; }
-    Options operator>>=(const Options& other) { *this = *this >> other; }
+    void operator<<=(const Options& other) { *this = *this << other; }
+    void operator>>=(const Options& other) { *this = *this >> other; }
 };
 
 struct MoveConfig {
