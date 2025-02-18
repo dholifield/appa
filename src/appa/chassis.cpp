@@ -169,7 +169,9 @@ void Chassis::turn(Point target, Options opts, Options override) {
     else target_pose = target;
 
     // merge options
-    opts = df_turn << opts << override;
+    opts <<= override;
+    if (opts.exit.has_value()) opts.exit = to_rad(opts.exit.value());
+    opts >>= df_turn;
 
     // run motion
     motion_run(target_pose, opts, TURN);
