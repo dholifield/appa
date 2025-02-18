@@ -78,6 +78,7 @@ void Chassis::motion_task(Pose target, Options opts, Motion motion) {
             if (target.theta == NAN) error = {0.0, pose.angle(target.p())}; // turn to point
             else error = {0.0, std::fmod(target.theta - pose.theta, M_PI)}; // turn to heading
             // direction
+            if (dir == REVERSE) error.angular += error.angular > 0 ? -M_PI : M_PI;
             if (turn_dir == CW && error.angular < 0) error.angular += 2 * M_PI;
             else if (turn_dir == CCW && error.angular > 0) error.angular -= 2 * M_PI;
             break;
@@ -157,7 +158,7 @@ void Chassis::move(Pose target, Options opts, Options override) {
     // merge options
     opts = df_move << opts << override;
 
-    // run motiong
+    // run motion
     motion_run(target, opts, MOVE);
 }
 
@@ -170,7 +171,7 @@ void Chassis::turn(Point target, Options opts, Options override) {
     // merge options
     opts = df_turn << opts << override;
 
-    // run motiong
+    // run motion
     motion_run(target_pose, opts, TURN);
 }
 
@@ -220,5 +221,5 @@ void Chassis::set_brake_mode(pros::motor_brake_mode_e_t mode) {
 /**
  * TODO: add settle time
  * TODO: implement settle exit for stuck robot
- * TODO: make all movements run in 1 task
+ * TODO: add wait until error for async movement
  */

@@ -24,6 +24,12 @@ class PID {
 /* Utils */
 enum Direction { AUTO, FORWARD, REVERSE, CCW, CW };
 
+#define AUTO appa::AUTO
+#define FORWARDS appa::FORWARD
+#define REVERSE appa::REVERSE
+#define CCW appa::CCW
+#define CW appa::CW
+
 struct Options {
     std::optional<Direction> dir;
     std::optional<Direction> turn;
