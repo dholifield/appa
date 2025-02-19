@@ -36,6 +36,7 @@ class Odom {
     void set(Pose pose);
     void set(Point point, double theta);
     void set(double x, double y, double theta);
+    void set_local(Pose pose);
     void set_point(Point point);
     void set_point(double x, double y);
     void set_x(double x);

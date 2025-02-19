@@ -83,8 +83,14 @@ Pose Odom::get_local() {
 }
 
 void Odom::set(Pose pose) {
-    const std::lock_guard<pros::Mutex> lock(odom_mutex);
     imu.set_rotation(-pose.theta);
+    const std::lock_guard<pros::Mutex> lock(odom_mutex);
+    odom_pose = pose - tracker_linear_offset.rotate(odom_pose.theta);
+}
+
+void Odom::set_local(Pose pose) {
+    imu.set_rotation(-pose.theta);
+    const std::lock_guard<pros::Mutex> lock(odom_mutex);
     odom_pose = pose;
 }
 

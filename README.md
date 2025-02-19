@@ -79,34 +79,40 @@ appa::Chassis bot({1, 2, 3, 4, 5},       // left motors
 - Default options will be shared by all movements and used if nothing is specified when a movement is called. Options and are described below
 
 ### Options
-Options contain different parameters for a chassis movement. The purpose of options are to make it very easy and readable to modify any chassis movement for highly customizale autonomous programs. They are, as the name implies, optional and can be used to change the default options or configurations. They can be set by simply putting the variable name and value in brackets like `{.speed = 100}`. You can set as many options as you want separated by commas, but they must be in the same order as the list below. Options can also easily be combined using the `<<` and `>>` operators. For example, `opts1 << opts2` will override options in `opts1` with any set in `opts2`. If `opts2` is empty, the the resulting options will be equal to `opts1`. Any options set with default_options will override the defaults unless otherwise noted. Options are as follows:
+Options contain different parameters for a chassis movement. The purpose of options are to make it very easy and readable to modify any chassis movement for highly customizable autonomous programs. They are, as the name implies, optional and can be used to change the default options and configurations.
 
-- `Direction dir` the direction of the movement. defaults to `AUTO`
-    - can be `AUTO`, `FORWARD`, or `REVERSE`
-- `Direction turn` the rotating direction of a turn. defaults to `AUTO`
-    - can be `AUTO`, `CCW`, or `CW`
-- `double exit` the maximum error to be considered at target. defaults to `config.exit`*
-- `int timeout` the maximum allowed time for a movement. defaults to `0` or ignore timeout
-- `double speed` the maximum speed of a movement. defaults to `config.speed`*
-- `double accel` the maximum acceleration of a movement. defaults to `0` or ignore acceleration limits
-- `double lead` the lead percentage for boomerang movements. defaults to `config.lead`*
-- `Gains lin_PID` PID gains for linear movement. defaults to `config.lin_PID`*
-- `Gains ang_PID` PID gains for angular movement and turns. defaults to `config.ang_PID`*
-- `bool async` true for asynchronous movements. defaults to `false`
-- `bool thru` true for through movements. defaults to `false`
-- `bool relative` true for relative movements. defaults to `false`
+They can be set by simply putting the variable name and value in brackets like `{.speed = 100}`. You can set as many options as you want separated by commas, but they must be in the same order as the list below. Options can also easily be combined using the `<<` and `>>` operators. For example, `opts1 << opts2` will override options in `opts1` with any set in `opts2`. If `opts2` is empty, the the resulting options will be equal to `opts1`. Options are as follows:
 
-_*these options will be ignored in the default_options as the configurations take precedence_
+| Option | Units | Default | Description |
+| - | - | - | - |
+| `Direction dir` | `AUTO`, `FORWARD`, or `REVERSE` | `AUTO` for move, `FORWARD` for turns and follow | the direction of the movement |
+| `Direction turn` | `AUTO`, `CCW`, `CW` | `AUTO` | the rotating direction of a turn |
+| `double exit` | inches for movements, degrees for turns | `config.exit` | the maximum error to be considered at target |
+| `int timeout` | milliseconds | `0` or ignore timeout | the maximum allowed time for a movement |
+| `double speed` | % of max voltage | `config.speed` | the maximum speed of a movement |
+| `double accel` | speed (%) per second | `0` or ignore acceleration limits | the maximum acceleration of a movement |
+| `double lead` | decimal % of distance to target | `config.lead` | the lead percentage for boomerang movements |
+| `double lookahead` | inches | `config.lookahead` | the lookahead distance for pure pursuit movements |
+| `Gains lin_PID` | | `config.lin_PID` | PID gains for linear movement |
+| `Gains ang_PID` | | `config.ang_PID` | PID gains for angular movement and turns |
+| `bool async` | | `false` | true for asynchronous movements |
+| `bool thru` | | `false` | true for through movements |
+| `bool relative` | | `false` | true for relative movements |
+
+>Options that default to configurations will ignore those set in the default_options in the constructor. Any other options that were set with default_options will override the defaults above. Options that don't apply to a movement will be ignored.
 
 ### Movements
-Currently, there are 2 different motion commands: `move(Target, Options, Override)`, and `turn(Target, Options, Override)`. This makes it very easy to control the chassis. `move` targets can be a single number for a relative straight movement, a point to drive to, or a target pose which uses the boomerang controller. `turn` targets can be a single number for a target heading, or a point to face towards. Options will be set as `Options << Override` for the purpose of allowing the user to use a set of predefined options, and manually set others for a specific movement. The movement parameters will automatically default to configurations or default options for those not specified. Movements can be done like:
+Currently, there are 3 different motion commands: `move(target, options, override)`, `turn(target, options, override)`, and `follow(path, options, override)`. This makes it very easy to control the chassis. `move` targets can be a single number for a relative straight movement, a point to drive to, or a target pose which uses the boomerang controller. `turn` targets can be a single number for a target heading, or a point to face towards. Options will be set as `options << override` for the purpose of allowing the user to use a set of predefined options, and also manually set others for a specific movement. The movement parameters will automatically default to configurations or default options for those not specified. Movements can be done like:
 
 ```c++
+std::vector<Point> path1 = {{0, 0}, {24, 0}, {24, 24}, {0, 24}}; // path with 4 points
+
 bot.move(-10);                                     // move backwards 10 inches
 bot.move({24, 0, 90});                             // move to pose {24, 0, 90}
 bot.move({24, 24}, {.speed = 100, .async = true}); // move to point {24, 24} asynchronously at max speed
 bot.turn({0, 0}, {.dir = REVERSE});                // turn so the rear faces {0, 0}
 bot.turn(180, {.turn = CCW, .relative = true});    // turn 180 degrees CCW
+bot.follow(path1, {.lookahead = 6});               // follow path1 with a lookahead distance of 6in
 ```
 
 Options also make it very easy to tune specific types of motions and use them throughout your autonomous
@@ -115,7 +121,7 @@ Options also make it very easy to tune specific types of motions and use them th
 // preset and tuned options
 appa::Options thru = {.exit = 4, .thru = true};
 appa::Options fast = {.speed = 100, .accel = 0};
-appa::Options precise = {.speed = 50, .accel = 20, .lin_PID = appa::Gains{5, 0, 0}};
+appa::Options precise = {.speed = 50, .accel = 20, .lin_PID = appa::Gains{5, 0, 1}};
 
 bot.move({24, 12});                            // move with default options
 bot.move({50, 0}, fast << thru);               // move with thru and fast options
@@ -135,9 +141,9 @@ void opcontrol() {
     }
 }
 ```
-Please go through the header file `include/appa/appa.h` Other useful chassis commands include:
+Please go through the header file `include/appa/appa.h` to see all available functions. Other useful chassis commands include:
 ```c++
-bot.wait();                           // wait for the movement to stop
+bot.wait();                           // wait for async movement to stop
 bot.set_brake_mode(MOTOR_BRAKE_HOLD); // set the brake mode
 bot.stop();                           // stop moving
 ```

@@ -101,7 +101,7 @@ struct Point {
 
     Point operator+(const Point& other) const { return Point({x + other.x, y + other.y}); }
     Point operator-(const Point& other) const { return Point({x - other.x, y - other.y}); }
-    Point operator*(const double mult) const { return Point({x * mult, y * mult}); }
+    Point operator*(double mult) const { return Point({x * mult, y * mult}); }
     void operator+=(const Point& other) {
         x += other.x;
         y += other.y;
@@ -110,9 +110,13 @@ struct Point {
         x -= other.x;
         y -= other.y;
     }
-    void operator*=(const double mult) {
+    void operator*=(double mult) {
         x *= mult;
         y *= mult;
+    }
+    void operator=(const Point& p) {
+        x = p.x;
+        y = p.y;
     }
     double dist(const Point& other) const {
         Point diff = *this - other;
@@ -134,10 +138,17 @@ struct Pose {
     Pose(double x = NAN, double y = NAN, double theta = NAN) : x(x), y(y), theta(theta) {}
     Pose(const Point& p, double theta) : x(p.x), y(p.y), theta(theta) {}
 
-    Pose operator+(const Point& p) const { return Pose({x + p.x, y + p.y}, theta); }
+    Pose operator+(const Point& p) const { return Pose(x + p.x, y + p.y, theta); }
+    Pose operator-(const Point& p) const { return Pose(x - p.x, y - p.y, theta); }
+    Pose operator-(const Pose& p) const { return Pose(x - p.x, y - p.y, theta - p.theta); }
     void operator+=(const Point& p) {
         x += p.x;
         y += p.y;
+    }
+    void operator+=(const Pose& p) {
+        x += p.x;
+        y += p.y;
+        theta += theta;
     }
     void operator=(const Point& p) {
         x = p.x;

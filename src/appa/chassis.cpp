@@ -65,13 +65,16 @@ void Chassis::motion_task(Pose target, const Options opts, const Motion motion) 
     // control loop
     while (running) {
         // find error and direction based on motion type
+        pose = odom.get();
         switch (motion) {
         case MOVE:
             // error
             error = {pose.dist(target.p()), pose.angle(target.p())};
             if (target.theta != NAN) { // move to pose
                 carrot = target.project(-error.linear * lead);
-                // carrot = target.project(-error.linear + lead);
+                // maybe better boomerang?
+                // carrot = (pose - target).p().rotate(-target.theta);
+                // carrot = target.project(-fabs(carrot.y) - error.linear * lead);
                 error = {pose.dist(carrot), pose.angle(carrot)};
             }
             // direction
@@ -84,13 +87,13 @@ void Chassis::motion_task(Pose target, const Options opts, const Motion motion) 
         case PATH: {
             // error
             carrot = (target.p() - pose.p()).rotate(-target.theta);
-            if (carrot.x > 0) {
+            double cy = carrot.y * carrot.y; // magic equation!
+            double dist = carrot.x + lookahead * (1 - cy / (lookahead * lookahead + 0.5 * cy));
+            if (dist > 0) {
                 running = false;
                 continue;
             }
-            double cy = carrot.y * carrot.y;
-            carrot = target.project(
-                carrot.x + lookahead * (1 - cy / (lookahead * lookahead + cy))); // magic equation!
+            carrot = target.project(dist);
             error = {pose.dist(carrot), pose.angle(carrot)};
             // direction
             if (dir == REVERSE) {
@@ -127,13 +130,13 @@ void Chassis::motion_task(Pose target, const Options opts, const Motion motion) 
         speeds = {lin_speed - ang_speed, lin_speed + ang_speed};
 
         // scale motor speeds
-        if (speeds.left > max_speed) {
-            speeds.left = max_speed;
-            speeds.right *= max_speed / speeds.left;
+        if (speeds.left > 100) {
+            speeds.right *= 100 / speeds.left;
+            speeds.left = 100;
         }
-        if (speeds.right > max_speed) {
-            speeds.right = max_speed;
-            speeds.left *= max_speed / speeds.right;
+        if (speeds.right > 100) {
+            speeds.left *= 100 / speeds.right;
+            speeds.right = 100;
         }
 
         // limit acceleration
@@ -149,7 +152,7 @@ void Chassis::motion_task(Pose target, const Options opts, const Motion motion) 
 
         // check exit conditions
         if (timeout > 0 && pros::millis() - start_time > timeout) running = false;
-        if (error.linear < exit) running = false;
+        if (fabs(error.linear) < exit) running = false;
 
         // delay task
         pros::c::task_delay_until(&now, dt);
@@ -172,6 +175,7 @@ void Chassis::motion_handler(const Pose& target, const Options& opts, const Moti
         motion_task(target, opts, motion);
     }
 }
+
 void Chassis::path_handler(const std::vector<Pose>& path, const Options& options) {
     // stop task if robot is already moving
     if (chassis_task) {
@@ -184,7 +188,7 @@ void Chassis::path_handler(const std::vector<Pose>& path, const Options& options
         for (int i = 0; i < path.size() - 1; ++i) {
             motion_task(path[i], options << Options{.thru = true}, PATH);
         }
-        motion_task(path[path.size() - 1], options, PATH);
+        motion_task(path[path.size() - 1], options, MOVE);
     };
 
     if (options.async.value()) {
@@ -211,16 +215,25 @@ void Chassis::move(Pose target, Options options, const Options& override) {
 }
 
 void Chassis::follow(const std::vector<Point>& path, Options options, const Options& override) {
-    // convert list of points to poses
-    std::vector<Pose> poses;
-    poses.push_back({path[0], odom.get().p().angle(path[0])});
-    for (int i = 1; i < path.size(); i++) {
-        double heading = path[i].angle(path[i - 1]) + M_PI;
-        poses.push_back({path[i], heading});
-    }
-
     // merge options
     options = df_move << options << override;
+    bool relative = options.relative.value();
+    options.relative = false;
+
+    // copy points to poses and convert if relative
+    Pose pose = odom.get();
+    std::vector<Pose> poses;
+    for (int i = 0; i < path.size(); i++) {
+        Point target = path[i];
+        if (relative) target = pose.p() + target.rotate(pose.theta);
+        poses.push_back({target, NAN});
+    }
+
+    // calculate heading for poses
+    poses[0].theta = pose.p().angle(path[0]);
+    for (int i = 1; i < poses.size(); i++) {
+        poses[i].theta = poses[i].p().angle(poses[i - 1].p()) + M_PI;
+    }
 
     // run motion
     path_handler(poses, options);
@@ -305,10 +318,11 @@ void Chassis::set_brake_mode(pros::motor_brake_mode_e_t mode) {
  *      dir - move (point + pose) and turn (either)
  *      turn - turn (CW and CCW)
  *      exit - move (any) and turn (any)
- *      timeout - either
- *      speed - either
- *      accel - either
+ *      timeout - any
+ *      speed - any
+ *      accel - any
  *      lead - move (pose)
+ *      lookahead - follow
  *      lin_PID - move (any)
  *      ang_PID - move (any) and turn (any)
  *      thru - move (point + pose) and turn (any)
