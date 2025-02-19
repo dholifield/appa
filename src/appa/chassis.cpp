@@ -11,6 +11,8 @@ Chassis::Chassis(std::initializer_list<int8_t> left_motors,
     df_move = Options::defaults() << default_options
                                   << Options{.exit = move_config.exit,
                                              .speed = move_config.speed,
+                                             .lead = move_config.lead,
+                                             .lookahead = move_config.lookahead,
                                              .lin_PID = move_config.lin_PID,
                                              .ang_PID = move_config.ang_PID};
     df_turn = Options::defaults() << default_options
@@ -29,7 +31,7 @@ void Chassis::wait() {
     }
 }
 
-void Chassis::motion_task(Pose target, Options opts, Motion motion) {
+void Chassis::motion_task(Pose target, const Options opts, const Motion motion) {
     // set up variables
     const int dt = 10; // ms
 
@@ -41,6 +43,7 @@ void Chassis::motion_task(Pose target, Options opts, Motion motion) {
     const double max_speed = opts.speed.value();
     const double accel_step = opts.accel.value() * dt / 1000;
     const double lead = opts.lead.value();
+    const double lookahead = opts.lookahead.value();
     PID lin_PID(opts.lin_PID.value());
     PID ang_PID(opts.ang_PID.value());
     const bool thru = opts.thru.value();
@@ -78,6 +81,24 @@ void Chassis::motion_task(Pose target, Options opts, Motion motion) {
                 error.linear *= -1;
             }
             break;
+        case PATH: {
+            // error
+            carrot = (target.p() - pose.p()).rotate(-target.theta);
+            if (carrot.x > 0) {
+                running = false;
+                continue;
+            }
+            double cy = carrot.y * carrot.y;
+            carrot = target.project(
+                carrot.x + lookahead * (1 - cy / (lookahead * lookahead + cy))); // magic equation!
+            error = {pose.dist(carrot), pose.angle(carrot)};
+            // direction
+            if (dir == REVERSE) {
+                error.angular += error.angular > 0 ? -M_PI : M_PI;
+                error.linear *= -1;
+            }
+            break;
+        }
         case TURN:
             // error
             if (target.theta == NAN) error = {0.0, pose.angle(target.p())}; // turn to point
@@ -136,7 +157,7 @@ void Chassis::motion_task(Pose target, Options opts, Motion motion) {
     if (!thru) stop(false);
 }
 
-void Chassis::motion_handler(Pose target, Options opts, Motion motion) {
+void Chassis::motion_handler(const Pose& target, const Options& opts, const Motion& motion) {
     // stop task if robot is already moving
     if (chassis_task) {
         chassis_task->remove();
@@ -151,14 +172,14 @@ void Chassis::motion_handler(Pose target, Options opts, Motion motion) {
         motion_task(target, opts, motion);
     }
 }
-void Chassis::motion_handler(std::vector<Pose> path, Options options) {
+void Chassis::path_handler(const std::vector<Pose>& path, const Options& options) {
     // stop task if robot is already moving
     if (chassis_task) {
         chassis_task->remove();
         delete chassis_task;
     }
     // follow path
-    auto follow_path = [this, &path, &options] {
+    auto follow_path = [this, path, options] {
         // code
         for (int i = 0; i < path.size() - 1; ++i) {
             motion_task(path[i], options << Options{.thru = true}, PATH);
@@ -173,7 +194,7 @@ void Chassis::motion_handler(std::vector<Pose> path, Options options) {
     }
 }
 
-void Chassis::move(Pose target, Options options, Options override) {
+void Chassis::move(Pose target, Options options, const Options& override) {
     // configure target
     if (target.y == NAN) { // relative straight
         target.y = 0.0;
@@ -189,12 +210,12 @@ void Chassis::move(Pose target, Options options, Options override) {
     motion_handler(target, options, MOVE);
 }
 
-void Chassis::move(std::vector<Point> path, Options options, Options override) {
+void Chassis::follow(const std::vector<Point>& path, Options options, const Options& override) {
     // convert list of points to poses
     std::vector<Pose> poses;
-    poses.push_back({path[0], NAN});
+    poses.push_back({path[0], odom.get().p().angle(path[0])});
     for (int i = 1; i < path.size(); i++) {
-        double heading = path[i].angle(path[i - 1]);
+        double heading = path[i].angle(path[i - 1]) + M_PI;
         poses.push_back({path[i], heading});
     }
 
@@ -202,10 +223,10 @@ void Chassis::move(std::vector<Point> path, Options options, Options override) {
     options = df_move << options << override;
 
     // run motion
-    motion_handler(poses, options);
+    path_handler(poses, options);
 }
 
-void Chassis::turn(Point target, Options options, Options override) {
+void Chassis::turn(const Point& target, Options options, const Options& override) {
     // configure target
     Pose target_pose;
     if (target.y == NAN) target_pose.theta = to_rad(target.x);
@@ -227,7 +248,7 @@ void Chassis::tank(double left_speed, double right_speed) {
     prev_speeds = (left_speed, right_speed);
 }
 
-void Chassis::tank(Point speeds) { tank(speeds.left, speeds.right); }
+void Chassis::tank(const Point& speeds) { tank(speeds.left, speeds.right); }
 
 void Chassis::tank(pros::Controller& controller) {
     double left_speed = controller.get_analog(pros::E_CONTROLLER_ANALOG_LEFT_Y) / 1.27;

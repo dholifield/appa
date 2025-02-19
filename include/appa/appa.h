@@ -60,9 +60,9 @@ class Chassis {
 
     enum Motion { MOVE, PATH, TURN };
 
-    void motion_task(Pose target, Options options, Motion motion);
-    void motion_handler(Pose target, Options options, Motion motion);
-    void motion_handler(std::vector<Pose> path, Options options);
+    void motion_task(Pose target, const Options options, const Motion motion);
+    void motion_handler(const Pose& target, const Options& options, const Motion& motion);
+    void path_handler(const std::vector<Pose>& path, const Options& options);
 
   public:
     Chassis(std::initializer_list<int8_t> left_motors, std::initializer_list<int8_t> right_motors,
@@ -73,12 +73,12 @@ class Chassis {
     void task();
     void wait();
 
-    void move(Pose target, Options options = {}, Options override = {});
-    void move(std::vector<Point> path, Options options = {}, Options override = {});
-    void turn(Point target, Options options = {}, Options override = {});
+    void move(Pose target, Options options = {}, const Options& override = {});
+    void follow(const std::vector<Point>& path, Options options = {}, const Options& override = {});
+    void turn(const Point& target, Options options = {}, const Options& override = {});
 
     void tank(double left_speed, double right_speed);
-    void tank(Point speeds);
+    void tank(const Point& speeds);
     void tank(pros::Controller& controller);
     void arcade(double linear, double angular);
     void arcade(pros::Controller& controller);

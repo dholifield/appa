@@ -40,6 +40,7 @@ struct Options {
     std::optional<double> speed;
     std::optional<double> accel;
     std::optional<double> lead;
+    std::optional<double> lookahead;
 
     std::optional<Gains> lin_PID;
     std::optional<Gains> ang_PID;
@@ -49,7 +50,8 @@ struct Options {
     std::optional<bool> relative;
 
     static Options defaults() {
-        return Options(AUTO, AUTO, 0.0, 0, 0.0, 0.0, 0.0, Gains(), Gains(), false, false, false);
+        return Options(
+            AUTO, AUTO, 0.0, 0, 0.0, 0.0, 0.0, 0.0, Gains(), Gains(), false, false, false);
     }
 
     Options operator<<(const Options& other) const {
@@ -62,6 +64,7 @@ struct Options {
         if (other.speed) result.speed = other.speed;
         if (other.accel) result.accel = other.accel;
         if (other.lead) result.lead = other.lead;
+        if (other.lookahead) result.lookahead = other.lookahead;
         if (other.lin_PID) result.lin_PID = other.lin_PID;
         if (other.ang_PID) result.ang_PID = other.ang_PID;
         if (other.async) result.async = other.async;
@@ -76,7 +79,7 @@ struct Options {
 };
 
 struct MoveConfig {
-    double exit, speed, lead;
+    double exit, speed, lead, lookahead;
     Gains lin_PID, ang_PID;
 };
 
@@ -115,11 +118,11 @@ struct Point {
         Point diff = *this - other;
         return sqrt(diff.x * diff.x + diff.y * diff.y);
     }
-    double angle(const Point& other, const double offset = 0.0) const {
+    double angle(const Point& other, double offset = 0.0) const {
         Point diff = other - *this;
         return std::fmod(atan2(diff.y, diff.x) - offset, M_PI);
     }
-    Point rotate(const double theta) const {
+    Point rotate(double theta) const {
         if (theta == 0) return *this;
         return {x * cos(theta) - y * sin(theta), x * sin(theta) + y * cos(theta)};
     }
@@ -129,7 +132,7 @@ struct Pose {
     double x, y, theta;
 
     Pose(double x = NAN, double y = NAN, double theta = NAN) : x(x), y(y), theta(theta) {}
-    Pose(Point p, double theta) : x(p.x), y(p.y), theta(theta) {}
+    Pose(const Point& p, double theta) : x(p.x), y(p.y), theta(theta) {}
 
     Pose operator+(const Point& p) const { return Pose({x + p.x, y + p.y}, theta); }
     void operator+=(const Point& p) {
@@ -147,7 +150,7 @@ struct Pose {
         return sqrt(diff.x * diff.x + diff.y * diff.y);
     }
     double angle(const Point& other) const { return p().angle(other, theta); }
-    Point project(const double dist) const { return p() + Point{dist, 0}.rotate(theta); }
+    Point project(double d) const { return p() + Point{d * cos(theta), d * sin(theta)}; }
 };
 
 double to_rad(double deg);
