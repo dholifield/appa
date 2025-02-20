@@ -5,7 +5,7 @@ The intent of this library it to make chassis movement both intuitive to use and
 
 # Installation
 
-1. Download the most recent version with `pros c add-depot appa https://odom.tech/appa.json` (once released)
+1. Download the most recent version with `pros c add-depot appa https://appa.odom.tech/appa.json` (once released)
 
 2. Apply the library to your project with `pros c apply appa`
 
