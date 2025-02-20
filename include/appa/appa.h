@@ -3,6 +3,7 @@
 #include "api.h"
 #include "utils.h"
 #include <atomic>
+#include <functional>
 #include <mutex>
 #include <optional>
 

@@ -40,6 +40,7 @@ void Chassis::motion_task(Pose target, const Options opts, const Motion motion) 
     PID ang_PID(opts.ang_PID.value());
     const bool thru = opts.thru.value();
     const bool relative = opts.relative.value();
+    const std::function<bool()> exit_fn = opts.exit_fn;
 
     Pose pose = odom.get();
     Point error, carrot, speeds;
@@ -148,6 +149,7 @@ void Chassis::motion_task(Pose target, const Options opts, const Motion motion) 
         // check exit conditions
         if (timeout > 0 && pros::millis() - start_time > timeout) running = false;
         if (fabs(error.linear) < exit) running = false;
+        if (exit_fn && exit_fn()) running = false;
 
         // delay task
         pros::c::task_delay_until(&now, dt);
@@ -290,9 +292,7 @@ void Chassis::set_brake_mode(pros::motor_brake_mode_e_t mode) {
 } // namespace appa
 
 /**
- * TODO: add settle time
- * TODO: implement settle exit for stuck robot
- * TODO: add wait until error for async movement
+ * TODO:
  */
 
 /**

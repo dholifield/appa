@@ -36,6 +36,7 @@ struct Options {
     std::optional<int> timeout;
     std::optional<Gains> lin_PID, ang_PID;
     std::optional<bool> thru, relative, async;
+    std::function<bool()> exit_fn = nullptr;
 
     static Options defaults() {
         return Options(
@@ -58,6 +59,7 @@ struct Options {
         if (other.thru) result.thru = other.thru;
         if (other.relative) result.relative = other.relative;
         if (other.async) result.async = other.async;
+        if (other.exit_fn) result.exit_fn = other.exit_fn;
 
         return result;
     }
