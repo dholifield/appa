@@ -83,8 +83,9 @@ void Chassis::motion_task(Pose target, const Options opts, const Motion motion) 
         case PATH: {
             // error
             carrot = (target.p() - pose.p()).rotate(-target.theta);
-            double cy = carrot.y * carrot.y; // magic equation!
-            double dist = carrot.x + lookahead * (1 - cy / (lookahead * lookahead + 0.5 * cy));
+            // double cy = carrot.y * carrot.y; // magic equation!
+            // double dist = carrot.x + lookahead * (1 - cy / (lookahead * lookahead + 0.5 * cy));
+            double dist = carrot.x + lookahead - fabs(carrot.y) / 2;
             if (dist > 0) {
                 running = false;
                 continue;
