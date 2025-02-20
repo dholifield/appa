@@ -31,27 +31,15 @@ enum Direction { AUTO, FORWARD, REVERSE, CCW, CW };
 #define CW appa::CW
 
 struct Options {
-    std::optional<Direction> dir;
-    std::optional<Direction> turn;
-
-    std::optional<double> exit;
+    std::optional<Direction> dir, turn;
+    std::optional<double> speed, accel, lead, lookahead, exit;
     std::optional<int> timeout;
-
-    std::optional<double> speed;
-    std::optional<double> accel;
-    std::optional<double> lead;
-    std::optional<double> lookahead;
-
-    std::optional<Gains> lin_PID;
-    std::optional<Gains> ang_PID;
-
-    std::optional<bool> async;
-    std::optional<bool> thru;
-    std::optional<bool> relative;
+    std::optional<Gains> lin_PID, ang_PID;
+    std::optional<bool> thru, relative, async;
 
     static Options defaults() {
         return Options(
-            AUTO, AUTO, 0.0, 0, 0.0, 0.0, 0.0, 0.0, Gains(), Gains(), false, false, false);
+            AUTO, AUTO, 0.0, 0.0, 0.0, 0.0, 0.0, 0, Gains(), Gains(), false, false, false);
     }
 
     Options operator<<(const Options& other) const {
@@ -59,17 +47,17 @@ struct Options {
 
         if (other.dir) result.dir = other.dir;
         if (other.turn) result.turn = other.turn;
-        if (other.exit) result.exit = other.exit;
-        if (other.timeout) result.timeout = other.timeout;
         if (other.speed) result.speed = other.speed;
         if (other.accel) result.accel = other.accel;
         if (other.lead) result.lead = other.lead;
         if (other.lookahead) result.lookahead = other.lookahead;
+        if (other.exit) result.exit = other.exit;
+        if (other.timeout) result.timeout = other.timeout;
         if (other.lin_PID) result.lin_PID = other.lin_PID;
         if (other.ang_PID) result.ang_PID = other.ang_PID;
-        if (other.async) result.async = other.async;
         if (other.thru) result.thru = other.thru;
         if (other.relative) result.relative = other.relative;
+        if (other.async) result.async = other.async;
 
         return result;
     }
@@ -81,11 +69,21 @@ struct Options {
 struct MoveConfig {
     double exit, speed, lead, lookahead;
     Gains lin_PID, ang_PID;
+
+    Options options() const {
+        return Options{.speed = speed,
+                       .lead = lead,
+                       .lookahead = lookahead,
+                       .exit = exit,
+                       .lin_PID = lin_PID,
+                       .ang_PID = ang_PID};
+    }
 };
 
 struct TurnConfig {
     double exit, speed;
     Gains ang_PID;
+    Options options() const { return Options{.speed = speed, .exit = exit, .ang_PID = ang_PID}; }
 };
 
 struct Point {
@@ -144,6 +142,10 @@ struct Pose {
     void operator+=(const Point& p) {
         x += p.x;
         y += p.y;
+    }
+    void operator-=(const Point& p) {
+        x -= p.x;
+        y -= p.y;
     }
     void operator+=(const Pose& p) {
         x += p.x;

@@ -3,22 +3,14 @@
 namespace appa {
 
 /* Chassis */
-Chassis::Chassis(std::initializer_list<int8_t> left_motors,
-                 std::initializer_list<int8_t> right_motors, Odom& odom, MoveConfig move_config,
-                 TurnConfig turn_config, Options default_options)
+Chassis::Chassis(const std::initializer_list<int8_t>& left_motors,
+                 const std::initializer_list<int8_t>& right_motors, Odom& odom,
+                 const MoveConfig& move_config, const TurnConfig& turn_config,
+                 const Options& default_options)
     : left_motors(left_motors), right_motors(right_motors), odom(odom) {
 
-    df_move = Options::defaults() << default_options
-                                  << Options{.exit = move_config.exit,
-                                             .speed = move_config.speed,
-                                             .lead = move_config.lead,
-                                             .lookahead = move_config.lookahead,
-                                             .lin_PID = move_config.lin_PID,
-                                             .ang_PID = move_config.ang_PID};
-    df_turn = Options::defaults() << default_options
-                                  << Options{.exit = to_rad(turn_config.exit),
-                                             .speed = turn_config.speed,
-                                             .ang_PID = turn_config.ang_PID};
+    df_move = Options::defaults() << default_options << move_config.options();
+    df_turn = Options::defaults() << default_options << turn_config.options();
 }
 
 Chassis::~Chassis() { stop(true); }
@@ -38,12 +30,12 @@ void Chassis::motion_task(Pose target, const Options opts, const Motion motion) 
     Direction dir = opts.dir.value();
     const bool auto_dir = dir == AUTO;
     const Direction turn_dir = opts.turn.value();
-    const double exit = opts.exit.value();
-    const int timeout = opts.timeout.value();
     const double max_speed = opts.speed.value();
     const double accel_step = opts.accel.value() * dt / 1000;
     const double lead = opts.lead.value();
     const double lookahead = opts.lookahead.value();
+    const double exit = opts.exit.value();
+    const int timeout = opts.timeout.value();
     PID lin_PID(opts.lin_PID.value());
     PID ang_PID(opts.ang_PID.value());
     const bool thru = opts.thru.value();
@@ -52,6 +44,9 @@ void Chassis::motion_task(Pose target, const Options opts, const Motion motion) 
     Pose pose = odom.get();
     Point error, carrot, speeds;
     double lin_speed, ang_speed;
+
+    // convert to radians
+    if (!std::isnan(target.theta)) target.theta = to_rad(target.theta);
 
     // relative motion
     if (relative)
@@ -70,7 +65,7 @@ void Chassis::motion_task(Pose target, const Options opts, const Motion motion) 
         case MOVE:
             // error
             error = {pose.dist(target.p()), pose.angle(target.p())};
-            if (target.theta != NAN) { // move to pose
+            if (!std::isnan(target.theta)) { // move to pose
                 carrot = target.project(-error.linear * lead);
                 // maybe better boomerang?
                 // carrot = (pose - target).p().rotate(-target.theta);
@@ -104,8 +99,8 @@ void Chassis::motion_task(Pose target, const Options opts, const Motion motion) 
         }
         case TURN:
             // error
-            if (target.theta == NAN) error = {0.0, pose.angle(target.p())}; // turn to point
-            else error = {0.0, std::fmod(target.theta - pose.theta, M_PI)}; // turn to heading
+            if (std::isnan(target.theta)) error = {0.0, pose.angle(target.p())}; // turn to point
+            else error = {0.0, std::fmod(target.theta - pose.theta, M_PI)};      // turn to heading
             // direction
             if (dir == REVERSE) error.angular += error.angular > 0 ? -M_PI : M_PI;
             if (turn_dir == CW && error.angular < 0) error.angular += 2 * M_PI;
@@ -200,12 +195,11 @@ void Chassis::path_handler(const std::vector<Pose>& path, const Options& options
 
 void Chassis::move(Pose target, Options options, const Options& override) {
     // configure target
-    if (target.y == NAN) { // relative straight
+    if (std::isnan(target.y)) { // relative straight
         target.y = 0.0;
         options.relative = true;
         options.dir = AUTO;
     }
-    if (target.theta != NAN) target.theta = to_rad(target.theta); // go to pose
 
     // merge options
     options = df_move << options << override;
@@ -230,9 +224,9 @@ void Chassis::follow(const std::vector<Point>& path, Options options, const Opti
     }
 
     // calculate heading for poses
-    poses[0].theta = pose.p().angle(path[0]);
+    poses[0].theta = to_deg(pose.p().angle(path[0]));
     for (int i = 1; i < poses.size(); i++) {
-        poses[i].theta = poses[i].p().angle(poses[i - 1].p()) + M_PI;
+        poses[i].theta = to_deg(poses[i].p().angle(poses[i - 1].p()) + M_PI);
     }
 
     // run motion
@@ -242,13 +236,11 @@ void Chassis::follow(const std::vector<Point>& path, Options options, const Opti
 void Chassis::turn(const Point& target, Options options, const Options& override) {
     // configure target
     Pose target_pose;
-    if (target.y == NAN) target_pose.theta = to_rad(target.x);
+    if (std::isnan(target.y)) target_pose.theta = target.x;
     else target_pose = target;
 
     // merge options
-    options <<= override;
-    if (options.exit.has_value()) options.exit = to_rad(options.exit.value());
-    options >>= df_turn;
+    options = df_turn << options << override;
 
     // run motion
     motion_handler(target_pose, options, TURN);

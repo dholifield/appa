@@ -83,21 +83,19 @@ Pose Odom::get_local() {
 }
 
 void Odom::set(Pose pose) {
-    imu.set_rotation(-pose.theta);
-    const std::lock_guard<pros::Mutex> lock(odom_mutex);
-    odom_pose = pose - tracker_linear_offset.rotate(odom_pose.theta);
+    odom_mutex.lock();
+    pose -= tracker_linear_offset.rotate(odom_pose.theta);
+    odom_mutex.unlock();
+    set_local(pose);
 }
 
 void Odom::set_local(Pose pose) {
-    imu.set_rotation(-pose.theta);
     const std::lock_guard<pros::Mutex> lock(odom_mutex);
+    if (std::isnan(pose.x)) pose.x = odom_pose.x;
+    if (std::isnan(pose.y)) pose.y = odom_pose.y;
+    if (std::isnan(pose.theta)) pose.theta = odom_pose.theta;
+    imu.set_rotation(-pose.theta);
     odom_pose = pose;
-}
-
-void Odom::set_point(Point point) {
-    std::lock_guard<pros::Mutex> lock(odom_mutex);
-    odom_pose.x = point.x;
-    odom_pose.y = point.y;
 }
 
 void Odom::set_x(double x) {
@@ -116,9 +114,8 @@ void Odom::set_theta(double theta) {
     odom_pose.theta = theta;
 }
 
-void Odom::set(Point point, double theta) { set((point.x, point.y, theta)); }
-void Odom::set(double x, double y, double theta) { set((x, y, theta)); }
-void Odom::set_point(double x, double y) { set_point((x, y)); }
+void Odom::set(Point point, double theta) { set({point.x, point.y, theta}); }
+void Odom::set(double x, double y, double theta) { set({x, y, theta}); }
 
 void Odom::set_offset(Point linear) {
     std::lock_guard<pros::Mutex> lock(odom_mutex);

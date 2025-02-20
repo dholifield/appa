@@ -34,11 +34,9 @@ class Odom {
     Pose get();
     Pose get_local();
     void set(Pose pose);
-    void set(Point point, double theta);
-    void set(double x, double y, double theta);
+    void set(Point point, double theta = NAN);
+    void set(double x, double y, double theta = NAN);
     void set_local(Pose pose);
-    void set_point(Point point);
-    void set_point(double x, double y);
     void set_x(double x);
     void set_y(double y);
     void set_theta(double theta);
@@ -66,9 +64,10 @@ class Chassis {
     void path_handler(const std::vector<Pose>& path, const Options& options);
 
   public:
-    Chassis(std::initializer_list<int8_t> left_motors, std::initializer_list<int8_t> right_motors,
-            Odom& odom, MoveConfig move_config, TurnConfig turn_config,
-            Options default_options = {});
+    Chassis(const std::initializer_list<int8_t>& left_motors,
+            const std::initializer_list<int8_t>& right_motors, Odom& odom,
+            const MoveConfig& move_config, const TurnConfig& turn_config,
+            const Options& default_options = {});
     ~Chassis();
 
     void task();
