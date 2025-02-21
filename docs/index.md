@@ -1,3 +1,4 @@
+{% raw %}
 # appa
 appa is a simple and intuitive VEX chassis movement library for [PROS](https://pros.cs.purdue.edu/). 
 
@@ -109,7 +110,7 @@ They can be set by simply putting the variable name and value in brackets like `
 Currently, there are 3 different motion commands: `move(target, options, override)`, `turn(target, options, override)`, and `follow(path, options, override)`. This makes it very easy to control the chassis. `move` targets can be a single number for a relative straight movement, a point to drive to, or a target pose which uses the boomerang controller. `turn` targets can be a single number for a target heading, or a point to face towards. `follow` targets must be a vector of points. Options will be set as `options << override` for the purpose of allowing the user to use a set of predefined options, and also manually set others for a specific movement. The movement parameters will automatically default to configurations or default options for those not specified. Movements can be done like:
 
 ```c++
-std::vector<Point> path1 = {% raw %}{{24, 0}, {24, 24}, {0, 24}, {0, 0}}; // path with 4 points
+std::vector<Point> path1 = {{24, 0}, {24, 24}, {0, 24}, {0, 0}}; // path with 4 points
 
 bot.move(-10);                                     // move backwards 10 inches
 bot.move({24, 0, 90});                             // move to pose {24, 0, 90}
@@ -163,3 +164,4 @@ bot.stop();                           // stop moving
  |___ ____ ___|
 '____|____|____'
 ```
+{% endraw %}
