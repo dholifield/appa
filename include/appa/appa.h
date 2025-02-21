@@ -24,6 +24,8 @@ class Odom {
     double tracker_angular_offset;
 
   public:
+    std::atomic<bool> debug{false};
+
     Odom(int8_t x_port, int8_t y_port, int8_t imu_port, double tpi, Point tracker_linear_offset,
          double tracker_angular_offset);
     Odom(std::array<int8_t, 2> x_port, std::array<int8_t, 2> y_port, int8_t imu_port, double tpi,
@@ -43,8 +45,6 @@ class Odom {
     void set_theta(double theta);
 
     void set_offset(Point linear);
-
-    void debug();
 };
 
 /* Chassis */
@@ -54,15 +54,17 @@ class Chassis {
     Odom& odom;
     Options df_move, df_turn;
     Point prev_speeds = {0.0, 0.0};
+    double path_length = 0.0;
 
     pros::Task* chassis_task = nullptr;
     pros::Mutex chassis_mutex;
+    std::atomic<bool> is_running{false};
 
     enum Motion { MOVE, PATH, TURN };
 
     void motion_task(Pose target, const Options options, const Motion motion);
-    void motion_handler(const Pose& target, const Options& options, const Motion& motion);
-    void path_handler(const std::vector<Pose>& path, const Options& options);
+    void motion_handler(const std::vector<Pose>& target, const Options& options,
+                        const Motion& motion);
 
   public:
     Chassis(const std::initializer_list<int8_t>& left_motors,

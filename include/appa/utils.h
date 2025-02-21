@@ -128,7 +128,9 @@ struct Point {
     }
     Point rotate(double theta) const {
         if (theta == 0) return *this;
-        return {x * cos(theta) - y * sin(theta), x * sin(theta) + y * cos(theta)};
+        double sine = sin(theta);
+        double cosine = cos(theta);
+        return {x * cosine - y * sine, x * sine + y * cosine};
     }
 };
 
@@ -139,31 +141,40 @@ struct Pose {
     Pose(const Point& p, double theta) : x(p.x), y(p.y), theta(theta) {}
 
     Pose operator+(const Point& p) const { return Pose(x + p.x, y + p.y, theta); }
+    Pose operator+(const Pose& p) const { return Pose(x + p.x, y + p.y, theta + p.theta); }
     Pose operator-(const Point& p) const { return Pose(x - p.x, y - p.y, theta); }
     Pose operator-(const Pose& p) const { return Pose(x - p.x, y - p.y, theta - p.theta); }
     void operator+=(const Point& p) {
         x += p.x;
         y += p.y;
     }
-    void operator-=(const Point& p) {
-        x -= p.x;
-        y -= p.y;
-    }
     void operator+=(const Pose& p) {
         x += p.x;
         y += p.y;
         theta += theta;
     }
+    void operator-=(const Point& p) {
+        x -= p.x;
+        y -= p.y;
+    }
+    void operator-=(const Pose& p) {
+        x -= p.x;
+        y -= p.y;
+        theta -= theta;
+    }
     void operator=(const Point& p) {
         x = p.x;
         y = p.y;
     }
-
-    Point p() const { return {x, y}; }
-    double dist(const Point& other) const {
-        Point diff = this->p() - other;
-        return sqrt(diff.x * diff.x + diff.y * diff.y);
+    void operator=(const Pose& p) {
+        x = p.x;
+        y = p.y;
+        theta = p.theta;
     }
+
+    operator Point() const { return Point{x, y}; }
+    Point p() const { return {x, y}; }
+    double dist(const Point& other) const { return p().dist(other); }
     double angle(const Point& other) const { return p().angle(other, theta); }
     Point project(double d) const { return p() + Point{d * cos(theta), d * sin(theta)}; }
 };

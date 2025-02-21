@@ -23,24 +23,24 @@ void Chassis::wait() {
     }
 }
 
-void Chassis::motion_task(Pose target, const Options opts, const Motion motion) {
+void Chassis::motion_task(Pose target, const Options options, const Motion motion) {
     // set up variables
     const int dt = 10; // ms
 
-    Direction dir = opts.dir.value();
+    Direction dir = options.dir.value();
     const bool auto_dir = dir == AUTO;
-    const Direction turn_dir = opts.turn.value();
-    const double max_speed = opts.speed.value();
-    const double accel_step = opts.accel.value() * dt / 1000;
-    const double lead = opts.lead.value();
-    const double lookahead = opts.lookahead.value();
-    const double exit = opts.exit.value();
-    const int timeout = opts.timeout.value();
-    PID lin_PID(opts.lin_PID.value());
-    PID ang_PID(opts.ang_PID.value());
-    const bool thru = opts.thru.value();
-    const bool relative = opts.relative.value();
-    const std::function<bool()> exit_fn = opts.exit_fn;
+    const Direction turn_dir = options.turn.value();
+    const double max_speed = options.speed.value();
+    const double accel_step = options.accel.value() * dt / 1000;
+    const double lead = options.lead.value();
+    const double lookahead = options.lookahead.value();
+    const double exit = options.exit.value();
+    const int timeout = options.timeout.value();
+    PID lin_PID(options.lin_PID.value());
+    PID ang_PID(options.ang_PID.value());
+    const bool thru = options.thru.value();
+    const bool relative = options.relative.value();
+    const std::function<bool()> exit_fn = options.exit_fn;
 
     Pose pose = odom.get();
     Point error, carrot, speeds;
@@ -59,17 +59,16 @@ void Chassis::motion_task(Pose target, const Options opts, const Motion motion) 
     bool running = true;
 
     // control loop
-    while (running) {
+    while (running && is_running.load()) {
         // find error and direction based on motion type
         pose = odom.get();
         switch (motion) {
         case MOVE:
             // error
-            error = {pose.dist(target.p()), pose.angle(target.p())};
+            error = {pose.dist(target), pose.angle(target)};
             if (!std::isnan(target.theta)) { // move to pose
                 carrot = target.project(-error.linear * lead);
-                // maybe better boomerang?
-                // carrot = (pose - target).p().rotate(-target.theta);
+                // carrot = (pose - target).p().rotate(-target.theta); // maybe better boomerang?
                 // carrot = target.project(-fabs(carrot.y) - error.linear * lead);
                 error = {pose.dist(carrot), pose.angle(carrot)};
             }
@@ -83,15 +82,13 @@ void Chassis::motion_task(Pose target, const Options opts, const Motion motion) 
         case PATH: {
             // error
             carrot = (target.p() - pose.p()).rotate(-target.theta);
-            // double cy = carrot.y * carrot.y; // magic equation!
-            // double dist = carrot.x + lookahead * (1 - cy / (lookahead * lookahead + 0.5 * cy));
-            double dist = carrot.x + lookahead - fabs(carrot.y) / 2;
+            double dist = carrot.x + lookahead - fabs(carrot.y) / 2; // circle approximation
             if (dist > 0) {
                 running = false;
                 continue;
             }
             carrot = target.project(dist);
-            error = {pose.dist(carrot), pose.angle(carrot)};
+            error = {pose.dist(target) + path_length, pose.angle(carrot)};
             // direction
             if (dir == REVERSE) {
                 error.angular += error.angular > 0 ? -M_PI : M_PI;
@@ -101,8 +98,8 @@ void Chassis::motion_task(Pose target, const Options opts, const Motion motion) 
         }
         case TURN:
             // error
-            if (std::isnan(target.theta)) error = {0.0, pose.angle(target.p())}; // turn to point
-            else error = {0.0, std::fmod(target.theta - pose.theta, M_PI)};      // turn to heading
+            if (std::isnan(target.theta)) error = {0.0, pose.angle(target)}; // turn to point
+            else error = {0.0, std::fmod(target.theta - pose.theta, M_PI)};  // turn to heading
             // direction
             if (dir == REVERSE) error.angular += error.angular > 0 ? -M_PI : M_PI;
             if (turn_dir == CW && error.angular < 0) error.angular += 2 * M_PI;
@@ -157,44 +154,42 @@ void Chassis::motion_task(Pose target, const Options opts, const Motion motion) 
         // delay task
         pros::c::task_delay_until(&now, dt);
     }
-    if (!thru) stop(false);
+    if (!thru && !(motion == PATH)) stop(false);
 }
 
-void Chassis::motion_handler(const Pose& target, const Options& opts, const Motion& motion) {
-    // stop task if robot is already moving
+void Chassis::motion_handler(const std::vector<Pose>& target, const Options& options,
+                             const Motion& motion) {
+    // stop task if chassis is already moving
     if (chassis_task) {
         chassis_task->remove();
         delete chassis_task;
+    }
+
+    // determine movement lambda
+    std::function<void()> movement;
+    if (motion == PATH) {
+        movement = [this, path = target, options] {
+            is_running.store(true);
+            for (int i = 0; i < path.size() - 1; ++i) {
+                motion_task(path[i], options, PATH);
+                path_length -= path[i].dist(path[i + 1]);
+            }
+            motion_task(path[path.size() - 1], options, MOVE);
+            is_running.store(false);
+        };
+    } else {
+        movement = [this, target, options, motion] {
+            is_running.store(true);
+            motion_task(target[0], options, motion);
+            is_running.store(false);
+        };
     }
 
     // start task if async
-    if (opts.async.value()) {
-        chassis_task = new pros::Task(
-            [this, target, opts, motion] { motion_task(target, opts, motion); }, "chassis_task");
-    } else {
-        motion_task(target, opts, motion);
-    }
-}
-
-void Chassis::path_handler(const std::vector<Pose>& path, const Options& options) {
-    // stop task if robot is already moving
-    if (chassis_task) {
-        chassis_task->remove();
-        delete chassis_task;
-    }
-    // follow path
-    auto follow_path = [this, path, options] {
-        // code
-        for (int i = 0; i < path.size() - 1; ++i) {
-            motion_task(path[i], options << Options{.thru = true}, PATH);
-        }
-        motion_task(path[path.size() - 1], options, MOVE);
-    };
-
     if (options.async.value()) {
-        chassis_task = new pros::Task(follow_path, "chassis_task");
+        chassis_task = new pros::Task(movement, "chassis_task");
     } else {
-        follow_path();
+        movement();
     }
 }
 
@@ -210,32 +205,7 @@ void Chassis::move(Pose target, Options options, const Options& override) {
     options = df_move << options << override;
 
     // run motion
-    motion_handler(target, options, MOVE);
-}
-
-void Chassis::follow(const std::vector<Point>& path, Options options, const Options& override) {
-    // merge options
-    options = df_move << options << override;
-    bool relative = options.relative.value();
-    options.relative = false;
-
-    // copy points to poses and convert if relative
-    Pose pose = odom.get();
-    std::vector<Pose> poses;
-    for (int i = 0; i < path.size(); i++) {
-        Point target = path[i];
-        if (relative) target = pose.p() + target.rotate(pose.theta);
-        poses.push_back({target, NAN});
-    }
-
-    // calculate heading for poses
-    poses[0].theta = to_deg(pose.p().angle(path[0]));
-    for (int i = 1; i < poses.size(); i++) {
-        poses[i].theta = to_deg(poses[i].p().angle(poses[i - 1].p()) + M_PI);
-    }
-
-    // run motion
-    path_handler(poses, options);
+    motion_handler({target}, options, MOVE);
 }
 
 void Chassis::turn(const Point& target, Options options, const Options& override) {
@@ -248,7 +218,35 @@ void Chassis::turn(const Point& target, Options options, const Options& override
     options = df_turn << options << override;
 
     // run motion
-    motion_handler(target_pose, options, TURN);
+    motion_handler({target_pose}, options, TURN);
+}
+
+void Chassis::follow(const std::vector<Point>& path, Options options, const Options& override) {
+    // merge options
+    options = df_move << options << override;
+    bool relative = options.relative.value();
+    options.relative = false;
+
+    // copy points to poses and convert if relative
+    Pose pose = odom.get();
+    std::vector<Pose> poses;
+
+    for (int i = 0; i < path.size(); i++) {
+        Point target = path[i];
+        if (relative) target = pose.p() + target.rotate(pose.theta);
+        poses.push_back({target, NAN});
+    }
+
+    // calculate heading for poses
+    poses[0].theta = to_deg(pose.p().angle(path[0]));
+    path_length = 0;
+    for (int i = 1; i < poses.size(); i++) {
+        poses[i].theta = to_deg(poses[i].p().angle(poses[i - 1]) + M_PI);
+        path_length += poses[i].dist(poses[i - 1]);
+    }
+
+    // run motion
+    motion_handler(poses, options, PATH);
 }
 
 void Chassis::tank(double left_speed, double right_speed) {
@@ -257,21 +255,13 @@ void Chassis::tank(double left_speed, double right_speed) {
     right_motors.move_voltage(right_speed * 120);
     prev_speeds = {left_speed, right_speed};
 }
-
 void Chassis::tank(const Point& speeds) { tank(speeds.left, speeds.right); }
-
 void Chassis::tank(pros::Controller& controller) {
     double left_speed = controller.get_analog(pros::E_CONTROLLER_ANALOG_LEFT_Y) / 1.27;
     double right_speed = controller.get_analog(pros::E_CONTROLLER_ANALOG_RIGHT_Y) / 1.27;
     tank(left_speed, right_speed);
 }
-
-void Chassis::arcade(double linear, double angular) {
-    double left_speed = linear + angular;
-    double right_speed = linear - angular;
-    tank(left_speed, right_speed);
-}
-
+void Chassis::arcade(double linear, double angular) { tank(linear + angular, linear - angular); }
 void Chassis::arcade(pros::Controller& controller) {
     double linear = controller.get_analog(pros::E_CONTROLLER_ANALOG_LEFT_Y) / 1.27;
     double angular = controller.get_analog(pros::E_CONTROLLER_ANALOG_RIGHT_X) / 1.27;
@@ -279,6 +269,7 @@ void Chassis::arcade(pros::Controller& controller) {
 }
 
 void Chassis::stop(bool stop_task) {
+    is_running.store(false);
     if (stop_task && chassis_task) {
         chassis_task->remove();
         delete chassis_task;
@@ -296,7 +287,7 @@ void Chassis::set_brake_mode(const pros::motor_brake_mode_e_t mode) {
 } // namespace appa
 
 /**
- * TODO:
+ * TODO: maybe make path struct. calculate headings in constructor and store path length
  */
 
 /**

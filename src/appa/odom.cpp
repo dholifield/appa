@@ -34,7 +34,7 @@ void Odom::task() {
             x_tracker.get_value() / tpi, y_tracker.get_value() / tpi, to_rad(-imu.get_rotation())};
 
         // calculate change in sensor values
-        Point dtrack = {track.x - prev_track.x, track.y - prev_track.y};
+        Point dtrack = track - prev_track;
         double dtheta = track.theta - prev_track.theta;
 
         // set previous sensor values for next loop
@@ -53,7 +53,12 @@ void Odom::task() {
         odom_mutex.give();
 
         // debugging
-        // if (!(count++ % 50)) debug();
+        if (!(++count % 20) && debug.load()) {
+            Pose p = get();
+            printf("\r(%6.2f,%6.2f,%7.2f)", p.x, p.y, to_deg(p.theta));
+            fflush(stdout);
+            count = 0;
+        }
 
         // loop every 5 ms
         pros::c::task_delay_until(&now, 5);
@@ -63,8 +68,7 @@ void Odom::task() {
 void Odom::start() {
     printf("calibrating imu...");
     if (imu.reset(true) != 1) {
-        printf("\nERROR: IMU reset failed with error code %d\n", errno);
-        printf("odometry was not started\n");
+        printf("\nERROR: IMU reset failed with error code %d\nodometry was not started\n", errno);
         return;
     }
     imu.set_data_rate(5);
@@ -126,11 +130,8 @@ void Odom::set_offset(Point linear) {
     tracker_linear_offset = linear;
 }
 
-void Odom::debug() {
-    // if (odom_task)
-    //     printf("odom_task priority: %d\n", odom_task->get_priority());
-    Pose pose = get();
-    printf("x: %.2f, y: %.2f, theta: %.2f\n", pose.x, pose.y, to_deg(pose.theta));
-}
-
 } // namespace appa
+
+/**
+ * TODO: multiple imu support
+ */

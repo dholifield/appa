@@ -29,17 +29,14 @@ appa::Chassis bot({-10, -9, 8, 3, -1},    // left motors
                   default_options);       // default options
 
 void initialize() {
-    // start odometry
+    // start odometry with debugging
     odom.start();
+    odom.debug = true;
 }
 
 void disabled() {}
 
 void competition_initialize() {}
-
-appa::Options thru = {.exit = 4, .thru = true};
-appa::Options fast = {.speed = 100, .accel = 0};
-appa::Options precise = {.speed = 50, .accel = 20, .lin_PID = appa::Gains{5, 0, 0}};
 
 void autonomous() {
     printf("autonomous started\n");
@@ -55,6 +52,27 @@ void opcontrol() {
     pros::Controller master(CONTROLLER_MASTER);
     bot.set_brake_mode(MOTOR_BRAKE_HOLD);
     printf("opcontrol started\n");
+
+    bool pid_tuning = true;
+
+    // pid tuning
+    while (pid_tuning) {
+        printf("Enter PID values (p, i, d) or 'q' to quit: ");
+
+        if (std::cin.peek() == 'q') break;
+
+        double p, i, d;
+        if (scanf("%lf, %lf, %lf", &p, &i, &d) == 3) {
+            odom.set(0, 0, 0);
+            bot.move({24, 0}, {.speed = 50, .lin_PID = appa::Gains(p, i, d)});
+            bot.move({0, 0}, {.speed = 50, .lin_PID = appa::Gains(p, i, d)});
+            pros::delay(250);
+        } else {
+            printf("invalid input. format: p, i, d\n");
+            std::cin.clear();            // clear error flags
+            std::cin.ignore(1000, '\n'); // discard invalid input
+        }
+    }
 
     while (true) {
         if (master.get_digital_new_press(DIGITAL_A)) {
