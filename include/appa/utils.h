@@ -21,6 +21,41 @@ class PID {
     double update(double error, int dt);
 };
 
+struct Imu {
+    std::vector<pros::Imu> imus{};
+
+    Imu(std::initializer_list<uint8_t> ports) {
+        for (auto port : ports) {
+            imus.emplace_back(port);
+        }
+    }
+
+    double get() {
+        double rotation = 0;
+        for (auto imu : imus) {
+            rotation -= imu.get_rotation();
+        }
+        return rotation / imus.size();
+    }
+
+    void set(double angle) {
+        for (auto imu : imus) {
+            imu.set_rotation(-angle);
+        }
+    }
+
+    int init() {
+        int result = 1;
+        for (auto imu : imus) {
+            result *= imu.reset(false);
+        }
+        // should prob add timeout
+        while (imus[0].is_calibrating())
+            pros::delay(10);
+        return result;
+    }
+};
+
 /* Utils */
 enum Direction { AUTO, FORWARD, REVERSE, CCW, CW };
 
