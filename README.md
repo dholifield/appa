@@ -100,8 +100,7 @@ They can be set by simply putting the variable name and value in brackets like `
 | `bool thru` | `true` for through movement | `false` | - |
 | `bool relative` | `true` for relative movement | `false` | - |
 | `bool async` | `true` for asynchronous movement | `false` | - |
-
-
+| `function<bool()> exit_fn` | custom exit with lambda function | `nullptr` | - |
 
 >Options that default to configurations will ignore those set in the default_options in the constructor. Any other options that were set with default_options will override the defaults above. Options that don't apply to a movement will be ignored.
 
