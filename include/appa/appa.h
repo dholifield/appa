@@ -24,9 +24,9 @@ class Odom {
     double tracker_angular_offset;
 
   public:
-    Odom(int8_t x_port, int8_t y_port, int8_t imu_port, int tpi, Point tracker_linear_offset,
+    Odom(int8_t x_port, int8_t y_port, int8_t imu_port, double tpi, Point tracker_linear_offset,
          double tracker_angular_offset);
-    Odom(std::array<int8_t, 2> x_port, std::array<int8_t, 2> y_port, int8_t imu_port, int tpi,
+    Odom(std::array<int8_t, 2> x_port, std::array<int8_t, 2> y_port, int8_t imu_port, double tpi,
          Point tracker_linear_offset, double tracker_angular_offset);
 
     void task();
