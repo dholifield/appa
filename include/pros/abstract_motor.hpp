@@ -23,8 +23,8 @@
 #include <cstdint>
 #include <iostream>
 
-#include "device.hpp"
-#include "motors.h"
+#include "pros/device.hpp"
+#include "pros/motors.h"
 #include "rtos.hpp"
 
 namespace pros {

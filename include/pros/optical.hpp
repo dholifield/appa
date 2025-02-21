@@ -24,8 +24,8 @@
 #include <cstdint>
 #include <iostream>
 
-#include "device.hpp"
-#include "optical.h"
+#include "pros/device.hpp"
+#include "pros/optical.h"
 
 namespace pros {
 inline namespace v5 {

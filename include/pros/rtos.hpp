@@ -22,7 +22,7 @@
 #ifndef _PROS_RTOS_HPP_
 #define _PROS_RTOS_HPP_
 
-#include "rtos.h"
+#include "pros/rtos.h"
 #undef delay
 #include <chrono>
 #include <cstdint>

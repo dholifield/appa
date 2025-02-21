@@ -27,7 +27,7 @@
 #include <utility>
 #include <iostream>
 
-#include "adi.h"
+#include "pros/adi.h"
 
 #define LEGACY_TYPEDEF(old_name, new_name) \
     using old_name [[deprecated("use " #new_name " instead")]] = new_name

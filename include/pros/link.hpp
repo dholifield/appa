@@ -21,8 +21,8 @@
 #include <cstdint>
 #include <string>
 
-#include "link.h"
-#include "device.hpp"
+#include "pros/link.h"
+#include "pros/device.hpp"
 
 namespace pros {
 /**

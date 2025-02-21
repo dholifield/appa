@@ -18,8 +18,8 @@
 #ifndef _PROS_DEVICE_HPP_
 #define _PROS_DEVICE_HPP_
 
-#include "misc.hpp"
-#include "rtos.hpp"
+#include "pros/misc.hpp"
+#include "pros/rtos.hpp"
 
 namespace pros {
 inline namespace v5 {

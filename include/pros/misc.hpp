@@ -25,7 +25,7 @@
 #include <cstdint>
 #include <string>
 
-#include "misc.h"
+#include "pros/misc.h"
 
 namespace pros {
 inline namespace v5 {

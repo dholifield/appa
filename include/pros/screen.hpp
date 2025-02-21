@@ -18,8 +18,8 @@
 #ifndef _PROS_SCREEN_HPP_
 #define _PROS_SCREEN_HPP_
 
-#include "screen.h"
-#include "colors.hpp"
+#include "pros/screen.h"
+#include "pros/colors.hpp"
 #include <cstdint>
 #include <string>
 

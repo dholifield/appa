@@ -26,11 +26,11 @@
 #include <cstdint>
 #include <iostream>
 
-#include "abstract_motor.hpp"
-#include "colors.hpp"
-#include "device.hpp"
-#include "motors.h"
-#include "motors.hpp"
+#include "pros/abstract_motor.hpp"
+#include "pros/colors.hpp"
+#include "pros/device.hpp"
+#include "pros/motors.h"
+#include "pros/motors.hpp"
 #include "rtos.hpp"
 
 namespace pros {

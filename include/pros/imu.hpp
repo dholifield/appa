@@ -21,8 +21,8 @@
 #include <cstdint>
 #include <iostream>
 
-#include "device.hpp"
-#include "imu.h"
+#include "pros/device.hpp"
+#include "pros/imu.h"
 
 namespace pros {
 /**

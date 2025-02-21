@@ -25,8 +25,8 @@
 #include <cstdint>
 #include <iostream>
 
-#include "device.hpp"
-#include "gps.h"
+#include "pros/device.hpp"
+#include "pros/gps.h"
 
 namespace pros {
 inline namespace v5 {

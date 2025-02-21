@@ -26,7 +26,7 @@
 #undef _GNU_SOURCE
 #include <stdint.h>
 
-#include "colors.h"  // c color macros
+#include "pros/colors.h"  // c color macros
 
 #ifdef __cplusplus
 extern "C" {

@@ -23,9 +23,9 @@
 #include <cstdint>
 #include <iostream>
 
-#include "abstract_motor.hpp"
-#include "device.hpp"
-#include "motors.h"
+#include "pros/abstract_motor.hpp"
+#include "pros/device.hpp"
+#include "pros/motors.h"
 #include "rtos.hpp"
 
 namespace pros {

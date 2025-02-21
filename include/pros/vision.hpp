@@ -23,8 +23,8 @@
 
 #include <cstdint>
 
-#include "device.hpp"
-#include "vision.h"
+#include "pros/device.hpp"
+#include "pros/vision.h"
 
 namespace pros {
 inline namespace v5 {
