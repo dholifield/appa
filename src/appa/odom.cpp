@@ -26,10 +26,12 @@ void Odom::task() {
     Pose prev_track = {0.0, 0.0, 0.0};
     uint32_t now = pros::millis();
 
+    int count = 0;
+
     while (true) {
         // get current sensor values
-        Pose track =
-            (x_tracker.get_value() / tpi, y_tracker.get_value() / tpi, to_rad(-imu.get_rotation()));
+        Pose track = {
+            x_tracker.get_value() / tpi, y_tracker.get_value() / tpi, to_rad(-imu.get_rotation())};
 
         // calculate change in sensor values
         Point dtrack = {track.x - prev_track.x, track.y - prev_track.y};
@@ -50,15 +52,17 @@ void Odom::task() {
         odom_pose.theta = track.theta;
         odom_mutex.give();
 
+        // debugging
+        // if (!(count++ % 50)) debug();
+
         // loop every 5 ms
         pros::c::task_delay_until(&now, 5);
     }
 }
 
 void Odom::start() {
-    printf("calibrating imu... ");
-    int rtn = imu.reset(true);
-    if (rtn != 1) {
+    printf("calibrating imu...");
+    if (imu.reset(true) != 1) {
         printf("\nERROR: IMU reset failed with error code %d\n", errno);
         printf("odometry was not started\n");
         return;

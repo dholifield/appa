@@ -4,22 +4,22 @@ appa::Odom odom({2, 3}, // x tracker port
                 {2, 1}, // y tracker port
                 13,     // imu port
                 321.5,  // tracker encoder ticks per inch
-                {5, 0}, // tracker linear offset (inches)
+                {2, 0}, // tracker linear offset (inches)
                 45);    // tracker angular offset (degrees)
 
-appa::MoveConfig move_config(1.0,         // exit (inches)
-                             85,          // speed (%)
-                             0.5,         // lead (%)
-                             6,           // lookahead (inches)
-                             {10, 0, 0},  // linear pid gains
-                             {50, 0, 0}); // angular pid gains
+appa::MoveConfig move_config(1.0,        // exit (inches)
+                             85,         // speed (%)
+                             0.5,        // lead (%)
+                             6,          // lookahead (inches)
+                             {10, 0, 1}, // linear pid gains
+                             {0, 0, 0}); // angular pid gains
 
 appa::TurnConfig turn_config(2.0,         // exit (degrees)
                              50,          // speed (%)
                              {10, 0, 0}); // angular pid gains
 
-appa::Options default_options = {.accel = 50,      // %/s
-                                 .timeout = 5000}; // ms
+appa::Options default_options = {.accel = 100,  // %/s
+                                 .timeout = 0}; // ms
 
 appa::Chassis bot({-10, -9, 8, 3, -1},    // left motors
                   {17, 19, -18, -12, 11}, // right motors
@@ -43,27 +43,26 @@ appa::Options precise = {.speed = 50, .accel = 20, .lin_PID = appa::Gains{5, 0, 
 
 void autonomous() {
     printf("autonomous started\n");
-    bot.set_brake_mode(MOTOR_BRAKE_HOLD);
-    odom.set(0, 0, 90);
+    odom.set(0, 0, 0);
 
-    bot.move({24, 12});                            // move with default options
-    bot.move({50, 0}, fast << thru);               // move with thru and fast options
-    bot.move({10, 0, 90}, precise, {.lead = 0.3}); // move with precise options plus different lead
+    printf("running...");
+    bot.move({24, 0}, {.speed = 50});
+    printf("done\n");
+    pros::delay(500);
 }
 
 void opcontrol() {
     pros::Controller master(CONTROLLER_MASTER);
-    bot.set_brake_mode(MOTOR_BRAKE_COAST);
+    bot.set_brake_mode(MOTOR_BRAKE_HOLD);
     printf("opcontrol started\n");
 
     while (true) {
         if (master.get_digital_new_press(DIGITAL_A)) {
             autonomous();
-            bot.set_brake_mode(MOTOR_BRAKE_HOLD);
+            bot.set_brake_mode(MOTOR_BRAKE_COAST);
         }
 
         bot.arcade(master);
-        // odom.debug();
         pros::delay(10);
     }
 }

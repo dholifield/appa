@@ -138,10 +138,12 @@ void Chassis::motion_task(Pose target, const Options opts, const Motion motion) 
 
         // limit acceleration
         if (accel_step) {
+            chassis_mutex.take();
             if (speeds.left - prev_speeds.left > accel_step)
                 speeds.left = prev_speeds.left + accel_step;
             if (speeds.right - prev_speeds.right > accel_step)
                 speeds.right = prev_speeds.right + accel_step;
+            chassis_mutex.give();
         }
 
         // set motor speeds
@@ -250,10 +252,10 @@ void Chassis::turn(const Point& target, Options options, const Options& override
 }
 
 void Chassis::tank(double left_speed, double right_speed) {
+    std::lock_guard<pros::Mutex> lock(chassis_mutex);
     left_motors.move_voltage(left_speed * 120);
     right_motors.move_voltage(right_speed * 120);
-    std::lock_guard<pros::Mutex> lock(chassis_mutex);
-    prev_speeds = (left_speed, right_speed);
+    prev_speeds = {left_speed, right_speed};
 }
 
 void Chassis::tank(const Point& speeds) { tank(speeds.left, speeds.right); }
@@ -285,7 +287,8 @@ void Chassis::stop(bool stop_task) {
     tank(0, 0);
 }
 
-void Chassis::set_brake_mode(pros::motor_brake_mode_e_t mode) {
+void Chassis::set_brake_mode(const pros::motor_brake_mode_e_t mode) {
+    std::lock_guard<pros::Mutex> lock(chassis_mutex);
     left_motors.set_brake_mode_all(mode);
     right_motors.set_brake_mode_all(mode);
 }
