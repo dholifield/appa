@@ -42,7 +42,7 @@ struct Imu {
         while ((pros::millis() - start < 3000) && !all_calibrated) {
             all_calibrated = true;
             for (auto& imu : imus) {
-                if (imu.get_status() != pros::ImuStatus::ready) all_calibrated = false;
+                if (imu.is_calibrating()) all_calibrated = false;
             }
             pros::delay(50);
         }
