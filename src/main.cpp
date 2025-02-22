@@ -1,11 +1,11 @@
 #include "main.h"
 
-appa::Odom odom({2, 3}, // x tracker port
-                {2, 1}, // y tracker port
-                13,     // imu port
-                321.5,  // tracker encoder ticks per inch
-                {2, 0}, // tracker linear offset (inches)
-                45);    // tracker angular offset (degrees)
+appa::Odom odom({2, 3},  // x tracker port
+                {2, 1},  // y tracker port
+                {13, 5}, // imu port(s)
+                321.5,   // tracker encoder ticks per inch
+                {2, 0},  // tracker linear offset (inches)
+                45);     // tracker angular offset (degrees)
 
 appa::MoveConfig move_config(1.0,        // exit (inches)
                              85,         // speed (%)

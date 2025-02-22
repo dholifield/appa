@@ -21,6 +21,7 @@ class PID {
     double update(double error, int dt);
 };
 
+/* Imu */
 struct Imu {
     std::vector<pros::Imu> imus{};
 
@@ -29,30 +30,37 @@ struct Imu {
             imus.emplace_back(port);
         }
     }
+    Imu(uint8_t port) { imus.emplace_back(port); }
+
+    bool calibrate() {
+        for (auto& imu : imus) {
+            imu.reset(false);
+            imu.set_data_rate(5);
+        }
+        uint32_t start = pros::millis();
+        bool all_calibrated = false;
+        while ((pros::millis() - start < 3000) && !all_calibrated) {
+            all_calibrated = true;
+            for (auto& imu : imus) {
+                if (imu.get_status() != pros::ImuStatus::ready) all_calibrated = false;
+            }
+            pros::delay(50);
+        }
+        return all_calibrated;
+    }
 
     double get() {
         double rotation = 0;
-        for (auto imu : imus) {
+        for (auto& imu : imus) {
             rotation -= imu.get_rotation();
         }
         return rotation / imus.size();
     }
 
     void set(double angle) {
-        for (auto imu : imus) {
+        for (auto& imu : imus) {
             imu.set_rotation(-angle);
         }
-    }
-
-    int init() {
-        int result = 1;
-        for (auto imu : imus) {
-            result *= imu.reset(false);
-        }
-        // should prob add timeout
-        while (imus[0].is_calibrating())
-            pros::delay(10);
-        return result;
     }
 };
 

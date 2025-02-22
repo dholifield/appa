@@ -3,20 +3,20 @@
 namespace appa {
 
 /* Odom */
-Odom::Odom(int8_t x_port, int8_t y_port, int8_t imu_port, double tpi, Point tracker_linear_offset,
+Odom::Odom(int8_t x_port, int8_t y_port, Imu imu_port, double tpi, Point tracker_linear_offset,
            double tracker_angular_offset)
     : x_tracker(abs(x_port), abs(x_port) + 1, x_port < 0),
       y_tracker(abs(y_port), abs(y_port) + 1, y_port < 0),
-      imu(imu_port),
+      imu(std::move(imu_port)),
       tpi(tpi),
       tracker_linear_offset(tracker_linear_offset),
       tracker_angular_offset(to_rad(tracker_angular_offset)) {}
 
-Odom::Odom(std::array<int8_t, 2> x_port, std::array<int8_t, 2> y_port, int8_t imu_port, double tpi,
+Odom::Odom(std::array<int8_t, 2> x_port, std::array<int8_t, 2> y_port, Imu imu_port, double tpi,
            Point tracker_linear_offset, double tracker_angular_offset)
     : x_tracker({x_port[0], abs(x_port[1]), abs(x_port[1]) + 1}, x_port[1] < 0),
       y_tracker({y_port[0], abs(y_port[1]), abs(y_port[1]) + 1}, y_port[1] < 0),
-      imu(imu_port),
+      imu(std::move(imu_port)),
       tpi(tpi),
       tracker_linear_offset(tracker_linear_offset),
       tracker_angular_offset(to_rad(tracker_angular_offset)) {}
@@ -30,8 +30,7 @@ void Odom::task() {
 
     while (true) {
         // get current sensor values
-        Pose track = {
-            x_tracker.get_value() / tpi, y_tracker.get_value() / tpi, to_rad(-imu.get_rotation())};
+        Pose track = {x_tracker.get_value() / tpi, y_tracker.get_value() / tpi, to_rad(imu.get())};
 
         // calculate change in sensor values
         Point dtrack = track - prev_track;
@@ -67,11 +66,10 @@ void Odom::task() {
 
 void Odom::start() {
     printf("calibrating imu...");
-    if (imu.reset(true) != 1) {
+    if (!imu.calibrate()) {
         printf("\nERROR: IMU reset failed with error code %d\nodometry was not started\n", errno);
         return;
     }
-    imu.set_data_rate(5);
     printf("done\n");
 
     set({0.0, 0.0, 0.0});
@@ -102,7 +100,7 @@ void Odom::set_local(Pose pose) {
     if (std::isnan(pose.x)) pose.x = odom_pose.x;
     if (std::isnan(pose.y)) pose.y = odom_pose.y;
     if (std::isnan(pose.theta)) pose.theta = odom_pose.theta;
-    imu.set_rotation(-pose.theta);
+    imu.set(pose.theta);
     odom_pose = pose;
 }
 
@@ -118,7 +116,7 @@ void Odom::set_y(double y) {
 
 void Odom::set_theta(double theta) {
     std::lock_guard<pros::Mutex> lock(odom_mutex);
-    imu.set_rotation(-theta);
+    imu.set(theta);
     odom_pose.theta = theta;
 }
 
