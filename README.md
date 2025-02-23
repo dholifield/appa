@@ -18,7 +18,7 @@ This library is comprised of two main components: odometry for position tracking
 
 ## Odometry
 [Odometry](https://wiki.purduesigbots.com/software/odometry) is used for keeping track of the robots position at all times. The supported configuration is for two tracker wheels, one in the x (forward) and one in the y (left) direction, in combination with an IMU. Here is how to create an instance of odom:
-```c++
+```cpp
 appa::Odom odom({7, 1}, // x tracker port
                 {7, 3}, // y tracker port
                 8,      // imu port
@@ -34,7 +34,7 @@ appa::Odom odom({7, 1}, // x tracker port
 
 To start odometry, simply call `odom.start()`, usually during initialization.
 
-```c++
+```cpp
 void initialize() {
     odom.start();
 }
@@ -42,7 +42,7 @@ void initialize() {
 
 Odometry will do its work in the background after you start it, and should be passed into a chassis to use it. Here are some useful commands:
 
-```c++
+```cpp
 // set the robot's pose
 odom.set(24, 12, 90);
 // get the robot's pose
@@ -55,7 +55,7 @@ odom.set_offset({5, 0});
 ## Chassis
 The chassis is whats used to control the robot. Only differential drive robots are supported in this library. Most holonomic drives will work fine, but won't take advantage of its capabilities. The chassis contains configurations for the different movement types as well as optional options. Information on tuning a PID can be found [here](https://wiki.purduesigbots.com/software/control-algorithms/pid-controller). Here is how to make a chassis:
 
-```c++
+```cpp
 appa::MoveConfig move_config(1.0,        // exit (inches)
                              85,         // speed (%)
                              0.5,        // lead (%)
@@ -108,7 +108,7 @@ They can be set by simply putting the variable name and value in brackets like `
 ### Movements
 Currently, there are 3 different motion commands: `move(target, options, override)`, `turn(target, options, override)`, and `follow(path, options, override)`. This makes it very easy to control the chassis. `move` targets can be a single number for a relative straight movement, a point to drive to, or a target pose which uses the boomerang controller. `turn` targets can be a single number for a target heading, or a point to face towards. `follow` targets must be a vector of points. Options will be set as `options << override` for the purpose of allowing the user to use a set of predefined options, and also manually set others for a specific movement. The movement parameters will automatically default to configurations or default options for those not specified. Movements can be done like:
 
-```c++
+```cpp
 std::vector<Point> path1 = {{24, 0}, {24, 24}, {0, 24}, {0, 0}}; // path with 4 points
 
 bot.move(-10);                                     // move backwards 10 inches
@@ -121,7 +121,7 @@ bot.follow(path1, {.lookahead = 4});               // follow path1 with a lookah
 
 Options also make it very easy to tune specific types of motions and use them throughout your autonomous
 
-```c++
+```cpp
 // preset and tuned options
 appa::Options thru = {.exit = 4, .thru = true};
 appa::Options fast = {.speed = 100, .accel = 0};
@@ -135,7 +135,7 @@ bot.turn(90, fast);                            // turn with fast options
 
 For operator control, tank and arcade controls exist. You can pass in the controller for ease of use, or simply use numbers for custom curves
 
-```c++
+```cpp
 void opcontrol() {
     pros::Controller master(CONTROLLER_MASTER);
 
@@ -146,20 +146,11 @@ void opcontrol() {
 }
 ```
 Please go through the header file `include/appa/appa.h` to see all available functions. Other useful chassis commands include:
-```c++
+```cpp
 bot.wait();                           // wait for async movement to stop
 bot.set_brake_mode(MOTOR_BRAKE_HOLD); // set the brake mode
 bot.stop();                           // stop moving
 ```
 
 ### Coordinate System:
-```
- ____ ____ ____
-'____|____|____'
- |   ^        |   <-.
- |   |        |    θ |
- |   y  x --> |      
- |            |   (front)
- |___ ____ ___|
-'____|____|____'
-```
+<img src="./docs/coordinate.svg" width="300">

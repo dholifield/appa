@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>appa⤴</title>
+    <link rel="stylesheet" href="style.css">
+
+    <!-- Marked.js for Markdown parsing -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/9.0.2/marked.min.js"></script>
+
+    <!-- Highlight.js for syntax highlighting -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+
+    <!-- GitHub theme for highlight.js -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+</head>
+
+<body>
+    <p>below is the latest documentation from <a href="https://github.com/dholifield/appa" target="_blank">GitHub</a>
+    </p>
+    <div id="readme-content">Loading...</div>
+
+    <script>
+        const repoUrl = "https://raw.githubusercontent.com/dholifield/appa/main/";
+
+        fetch(repoUrl + "README.md")
+            .then(response => response.text())
+            .then(text => {
+                // Convert Markdown to HTML
+                let html = marked.parse(text);
+
+                // Fix relative image paths
+                html = html.replace(/<img src="(?!https?:\/\/)(.*?)"/g, `<img src="${repoUrl}$1"`);
+
+                // Insert the HTML into the page
+                document.getElementById("readme-content").innerHTML = html;
+
+                // Apply syntax highlighting to all code blocks
+                document.querySelectorAll('pre code').forEach((block) => {
+                    hljs.highlightElement(block);
+                });
+            })
+            .catch(error => {
+                console.error("Error fetching README:", error);
+                document.getElementById("readme-content").innerHTML = "<p>Failed to load README.</p>";
+            });
+    </script>
+</body>
+
+</html>
