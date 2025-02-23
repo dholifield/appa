@@ -1,11 +1,11 @@
 [
     {
         "metadata": {
-            "location": "https://github.com/dholifield/dom/releases/download/test/appa@0.1.0.zip"
+            "location": "https://github.com/dholifield/dom/releases/download/beta/appa@0.1.0.zip"
         },
-        "name": "AppaLib",
+        "name": "appa",
         "py/object": "pros.conductor.templates.base_template.BaseTemplate",
-        "supported_kernels": ">=4.1.0",
+        "supported_kernels": ">=4.1.1",
         "target": "v5",
         "version": "0.1.0"
     }

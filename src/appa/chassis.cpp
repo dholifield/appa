@@ -293,7 +293,9 @@ void Chassis::set_brake_mode(const pros::motor_brake_mode_e_t mode) {
 /**
  * TESTING:
  * back to back movements. confirm tasks operate as exepected
- * asynchronous movement. async then wait. async then cancel with new movement
+ * asynchronous movement
+ *      async then wait
+ *      async then cancel with new movement
  * test all motions
  *      move distance
  *      move to point

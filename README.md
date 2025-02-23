@@ -1,4 +1,5 @@
-# appa
+<img src="./docs/appa.svg">
+
 appa is a simple and intuitive VEX chassis movement library for [PROS](https://pros.cs.purdue.edu/). 
 
 The intent of this library it to make chassis movement both intuitive to use and understand. Only recommended configurations are supported, but it is designed to be easy to build upon for custom implementations. 

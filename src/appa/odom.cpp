@@ -131,5 +131,5 @@ void Odom::set_offset(Point linear) {
 } // namespace appa
 
 /**
- * TODO: multiple imu support
+ * TODO:
  */
