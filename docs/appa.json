@@ -1,7 +1,7 @@
 [
     {
         "metadata": {
-            "location": "https://github.com/dholifield/dom/releases/download/beta/appa@0.1.0.zip"
+            "location": "https://github.com/dholifield/appa/releases/download/beta/appa@0.1.0.zip"
         },
         "name": "appa",
         "py/object": "pros.conductor.templates.base_template.BaseTemplate",
