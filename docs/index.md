@@ -1,3 +1,4 @@
+{% raw %}
 <img src="./appa.svg">
 
 appa is a simple and intuitive VEX chassis movement library for [PROS](https://pros.cs.purdue.edu/). 
@@ -163,3 +164,4 @@ bot.stop();                           // stop moving
  |___ ____ ___|
 '____|____|____'
 ```
+{% endraw %}
