@@ -22,7 +22,7 @@ This library is comprised of two main components: odometry for position tracking
 appa::Odom odom({7, 1}, // x tracker port
                 {7, 3}, // y tracker port
                 8,      // imu port
-                300,    // tracker encoder ticks per inch (tpi)
+                300,    // encoder ticks per unit (inches)
                 {5, 0}, // tracker linear offset (inches)
                 45);    // tracker angular offset (degrees)
 ```
@@ -94,8 +94,8 @@ They can be set by simply putting the variable name and value in brackets like `
 | `double speed` | The maximum speed of a movement | `config.speed` | % of max voltage |
 | `double accel` | The maximum acceleration of a movement | `0` or ignore acceleration limits | Speed (%) per second |
 | `double lead` | The lead percentage for boomerang movements | `config.lead` | Decimal % of distance to target |
-| `double lookahead` | The lookahead distance for pure pursuit movements | `config.lookahead` | Inches |
-| `double exit` | The maximum error to be considered at target | `config.exit` | Inches for moves, degrees for turns |
+| `double lookahead` | The lookahead distance for pure pursuit movements | `config.lookahead` | Linear units |
+| `double exit` | The maximum error to be considered at target | `config.exit` | Linear units for moves, degrees for turns |
 | `int timeout` | The maximum allowed time for a movement | `0` or ignore timeout | Milliseconds |
 | `Gains lin_PID` | PID gains for linear movement | `config.lin_PID` | - |
 | `Gains ang_PID` | PID gains for angular movement and turns | `config.ang_PID` | - |
@@ -112,7 +112,7 @@ Currently, there are 3 different motion commands: `move(target, options, overrid
 ```cpp
 std::vector<Point> path1 = {{24, 0}, {24, 24}, {0, 24}, {0, 0}}; // path with 4 points
 
-bot.move(-10);                                     // move backwards 10 inches
+bot.move(-10);                                     // move backwards 10 units (inches)
 bot.move({24, 0, 90});                             // move to pose {24, 0, 90}
 bot.move({24, 24}, {.speed = 100, .async = true}); // move to point {24, 24} asynchronously at max speed
 bot.turn({0, 0}, {.dir = REVERSE});                // turn so the rear faces {0, 0}

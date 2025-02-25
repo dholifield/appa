@@ -3,7 +3,7 @@
 appa::Odom odom({2, 3},  // x tracker port
                 {2, 1},  // y tracker port
                 {13, 5}, // imu port(s)
-                321.5,   // tracker encoder ticks per inch
+                321.5,   // encoder ticks per unit (inches)
                 {2, 0},  // tracker linear offset (inches)
                 45);     // tracker angular offset (degrees)
 

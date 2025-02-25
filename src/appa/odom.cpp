@@ -3,21 +3,21 @@
 namespace appa {
 
 /* Odom */
-Odom::Odom(int8_t x_port, int8_t y_port, Imu imu_port, double tpi, Point tracker_linear_offset,
+Odom::Odom(int8_t x_port, int8_t y_port, Imu imu_port, double tpu, Point tracker_linear_offset,
            double tracker_angular_offset)
     : x_tracker(abs(x_port), abs(x_port) + 1, x_port < 0),
       y_tracker(abs(y_port), abs(y_port) + 1, y_port < 0),
       imu(std::move(imu_port)),
-      tpi(tpi),
+      tpu(tpu),
       tracker_linear_offset(tracker_linear_offset),
       tracker_angular_offset(to_rad(tracker_angular_offset)) {}
 
-Odom::Odom(std::array<int8_t, 2> x_port, std::array<int8_t, 2> y_port, Imu imu_port, double tpi,
+Odom::Odom(std::array<int8_t, 2> x_port, std::array<int8_t, 2> y_port, Imu imu_port, double tpu,
            Point tracker_linear_offset, double tracker_angular_offset)
     : x_tracker({x_port[0], abs(x_port[1]), abs(x_port[1]) + 1}, x_port[1] < 0),
       y_tracker({y_port[0], abs(y_port[1]), abs(y_port[1]) + 1}, y_port[1] < 0),
       imu(std::move(imu_port)),
-      tpi(tpi),
+      tpu(tpu),
       tracker_linear_offset(tracker_linear_offset),
       tracker_angular_offset(to_rad(tracker_angular_offset)) {}
 
@@ -30,7 +30,7 @@ void Odom::task() {
 
     while (true) {
         // get current sensor values
-        Pose track = {x_tracker.get_value() / tpi, y_tracker.get_value() / tpi, to_rad(imu.get())};
+        Pose track = {x_tracker.get_value() / tpu, y_tracker.get_value() / tpu, to_rad(imu.get())};
 
         // calculate change in sensor values
         Point dtrack = track - prev_track;

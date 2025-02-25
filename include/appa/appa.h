@@ -18,7 +18,7 @@ class Odom {
 
     pros::adi::Encoder x_tracker, y_tracker;
     appa::Imu imu;
-    double tpi;
+    double tpu;
 
     Point tracker_linear_offset;
     double tracker_angular_offset;
@@ -26,9 +26,9 @@ class Odom {
   public:
     std::atomic<bool> debug{false};
 
-    Odom(int8_t x_port, int8_t y_port, Imu imu_port, double tpi, Point tracker_linear_offset,
+    Odom(int8_t x_port, int8_t y_port, Imu imu_port, double tpu, Point tracker_linear_offset,
          double tracker_angular_offset);
-    Odom(std::array<int8_t, 2> x_port, std::array<int8_t, 2> y_port, Imu imu_port, double tpi,
+    Odom(std::array<int8_t, 2> x_port, std::array<int8_t, 2> y_port, Imu imu_port, double tpu,
          Point tracker_linear_offset, double tracker_angular_offset);
 
     void task();

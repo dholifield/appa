@@ -305,6 +305,7 @@ void Chassis::set_brake_mode(const pros::motor_brake_mode_e_t mode) {
  *      follow path
  * test all options
  *      dir - move (point + pose) and turn (either)
+ *          - negative distance for move
  *      turn - turn (CW and CCW)
  *      exit - move (any) and turn (any)
  *      timeout - any
