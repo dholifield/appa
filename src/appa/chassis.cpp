@@ -288,6 +288,8 @@ void Chassis::set_brake_mode(const pros::motor_brake_mode_e_t mode) {
 
 /**
  * TODO: maybe make path struct. calculate headings in constructor and store path length
+ * TODO: maybe add radius to turn so you can do arc movements
+ * TODO: add new op control setting for fancy curves and scaling and deadzone
  */
 
 /**

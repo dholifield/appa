@@ -4,6 +4,14 @@ appa is a simple and intuitive VEX chassis movement library for [PROS](https://p
 
 The intent of this library it to make chassis movement both intuitive to use and understand. Only recommended configurations are supported, but it is designed to be easy to build upon for custom implementations. 
 
+# Features
+- **Odometry Position Tracking** – Using two perpendicular tracking wheels and one or more IMUs to estimate position.
+- **Turning** – Supports turning to a specific heading or facing a target point.
+- **Movements** – Allows movement by a set distance, to a specific point, or to a pose.
+- **Path Following** – Follow a pre-defined path using pure pursuit.
+- **Customizable Parameters** - All movement parameters are fully customizable, designed for readability and ease of use.
+- **Flexible Control** – Has many options including asynchronous movements and custom lambda exit conditions.
+
 # Installation
 
 1. Download the most recent version with `pros c add-depot appa https://appa.odom.tech/appa.json`
@@ -27,11 +35,11 @@ appa::Odom odom({7, 1}, // x tracker port
                 45);    // tracker angular offset (degrees)
 ```
 
-- The tracker ports can be `port` or `{expander port, port}`. Negative port reverses the direction
-- The imu port can be `port` or `{port1, port2, ...}` for averaging multiple imus
-- TPU should be experimentally determined by moving the robot a known distance and recording the encoder output `ticks / distance`. The distance can be in any unit you choose, but must stay consistent throughout all of your code. Most often inches
-- The linear offset is `{x, y}` which is the distance from your tracking center to your center of mass
-- The angular offset can be used for [angled tracker wheel](https://youtu.be/TqMNuXfKgMc?si=iwc8nQkSW-A0ZFeG&t=36) configurations, as long as the two wheels are perpendicular
+- The tracker ports can be `port` or `{expander port, port}`. Negative port reverses the direction.
+- The imu port can be `port` or `{port1, port2, ...}` for averaging multiple imus.
+- TPU should be experimentally determined by moving the robot a known distance and recording the encoder output `ticks / distance`. The distance can be in any unit you choose, but must stay consistent throughout all of your code. Most often inches.
+- The linear offset is `{x, y}` which is the distance from your tracking center to your center of mass.
+- The angular offset can be used for [angled tracker wheel](https://youtu.be/TqMNuXfKgMc?si=iwc8nQkSW-A0ZFeG&t=36) configurations, as long as the two wheels are perpendicular.
 
 To start odometry, simply call `odom.start()`, usually during initialization.
 
@@ -78,9 +86,9 @@ appa::Chassis bot({1, 2, 3},        // left motors
                   turn_config,      // turn configuration
                   default_options); // default options
 ```
-- Left and Right motors are provided in a list. Negative reverses the motor direction
-- Move and turn configurations set default parameters for those movements
-- Default options will be shared by all movements and used if nothing is specified when a movement is called. Options and are described below
+- Left and Right motors are provided in a list. Negative reverses the motor direction.
+- Move and turn configurations set default parameters for those movements.
+- Default options will be shared by all movements and used if nothing is specified when a movement is called. Options and are described below.
 
 ### Options
 Options contain different parameters for a chassis movement. The purpose of options are to make it very easy and readable to modify any chassis movement for highly customizable autonomous programs. They are, as the name implies, optional and can be used to change the default options and configurations.
@@ -120,7 +128,7 @@ bot.turn(180, {.turn = CCW, .relative = true});    // turn 180 degrees CCW
 bot.follow(path1, {.lookahead = 4});               // follow path1 with a lookahead distance of 4in
 ```
 
-Options also make it very easy to tune specific types of motions and use them throughout your autonomous
+Options also make it very easy to tune specific types of motions and use them throughout your autonomous.
 
 ```cpp
 // preset and tuned options
@@ -134,7 +142,7 @@ bot.move({10, 0, 90}, precise, {.lead = 0.7}); // move with precise options plus
 bot.turn(90, fast);                            // turn with fast options
 ```
 
-For operator control, tank and arcade controls exist. You can pass in the controller for ease of use, or simply use numbers for custom curves
+For operator control, tank and arcade controls exist. You can pass in the controller for ease of use, or simply use numbers for custom curves.
 
 ```cpp
 void opcontrol() {
@@ -146,7 +154,9 @@ void opcontrol() {
     }
 }
 ```
+
 Please go through the header file `include/appa/appa.h` to see all available functions. Other useful chassis commands include:
+
 ```cpp
 bot.wait();                           // wait for async movement to stop
 bot.set_brake_mode(MOTOR_BRAKE_HOLD); // set the brake mode
