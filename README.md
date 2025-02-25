@@ -29,7 +29,7 @@ appa::Odom odom({7, 1}, // x tracker port
 
 - The tracker ports can be `port` or `{expander port, port}`. Negative port reverses the direction
 - The imu port can be `port` or `{port1, port2, ...}` for averaging multiple imus
-- TPI should be experimentally determined by moving the robot a known distance and recording the encoder output `ticks / distance`
+- TPU should be experimentally determined by moving the robot a known distance and recording the encoder output `ticks / distance`. The distance can be in any unit you choose, but must stay consistent throughout all of your code. Most often inches
 - The linear offset is `{x, y}` which is the distance from your tracking center to your center of mass
 - The angular offset can be used for [angled tracker wheel](https://youtu.be/TqMNuXfKgMc?si=iwc8nQkSW-A0ZFeG&t=36) configurations, as long as the two wheels are perpendicular
 
