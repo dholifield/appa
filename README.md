@@ -133,11 +133,13 @@ Options also make it very easy to tune specific types of motions and use them th
 ```cpp
 // preset and tuned options
 appa::Options thru = {.exit = 4, .thru = true};
-appa::Options fast = {.speed = 100, .accel = 0};
-appa::Options precise = {.speed = 50, .accel = 20, .lin_PID = appa::Gains{5, 0, 1}};
+appa::Options fast = {.speed = 100, .accel = 500};
+appa::Options precise = {.speed = 50, .accel = 50, .lin_PID = appa::Gains{5, 0, 1}};
+appa::Options goal_grab = {.exit_fn = [] { return claw.has_goal(); }};
 
 bot.move({24, 12});                            // move with default options
-bot.move({50, 0}, fast << thru);               // move with thru and fast options
+bot.move({50, 10}, fast << thru);              // move with thru and fast options
+bot.move({60, 0}, fast << goal_grab);          // move fast and exit when claw has goal
 bot.move({10, 0, 90}, precise, {.lead = 0.7}); // move with precise options plus different lead
 bot.turn(90, fast);                            // turn with fast options
 ```
