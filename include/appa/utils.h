@@ -120,6 +120,33 @@ struct Pose {
     Point project(double d) const;
 };
 
+struct Path {
+    std::vector<Pose> path;
+
+    Path() = default;
+
+    Path(std::initializer_list<Point> points) {
+        if (points.size() < 2) return;
+
+        auto it = points.begin();
+        Point prev = *it++;
+        path.emplace_back(prev, NAN);
+
+        for (; it != points.end(); ++it) {
+            path.emplace_back(*it, prev.angle(*it));
+            prev = *it;
+        }
+    }
+};
+
+struct Bezier : public Path {
+    Bezier(std::initializer_list<Point> anchors, std::initializer_list<Point> weights,
+           double resolution) {
+        // calculate resulution number of points on the bezier curve(s) defined by anchors and
+        // weights
+    }
+};
+
 double to_rad(double deg);
 double to_deg(double rad);
 double limit(double val, double limit);
