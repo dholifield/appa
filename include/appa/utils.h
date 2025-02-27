@@ -84,10 +84,10 @@ struct Point {
 
     Point operator+(const Point& other) const;
     Point operator-(const Point& other) const;
-    Point operator*(double mult) const;
+    Point operator*(double scalar) const;
     void operator+=(const Point& other);
     void operator-=(const Point& other);
-    void operator*=(double mult);
+    void operator*=(double scalar);
     void operator=(const Point& p);
 
     double dist(const Point& other) const;
@@ -122,28 +122,86 @@ struct Pose {
 
 struct Path {
     std::vector<Pose> path;
+    double length;
+    int index = 0;
 
     Path() = default;
 
     Path(std::initializer_list<Point> points) {
-        if (points.size() < 2) return;
+        if (points.size() < 2) throw std::invalid_argument("Path must have at least 2 points.");
 
         auto it = points.begin();
         Point prev = *it++;
         path.emplace_back(prev, NAN);
+        length = 0;
 
         for (; it != points.end(); ++it) {
+            length += prev.dist(*it);
             path.emplace_back(*it, prev.angle(*it));
             prev = *it;
         }
     }
+
+    Pose get() { return path[index]; }
+    bool inc() { return ++index >= size(); }
+    int size() { return path.size(); }
 };
 
-struct Bezier : public Path {
-    Bezier(std::initializer_list<Point> anchors, std::initializer_list<Point> weights,
-           double resolution) {
-        // calculate resulution number of points on the bezier curve(s) defined by anchors and
-        // weights
+struct Bezier {
+    std::vector<Point> anchors;
+    std::vector<Point> weights;
+    const double length;
+    const int sections;
+    const double dt;
+
+    double current_t = 0;
+    double current_length;
+
+    Bezier(std::initializer_list<Point> anchor_list, std::initializer_list<Point> weight_list,
+           int resolution)
+        : anchors(anchor_list),
+          weights(weight_list),
+          sections(anchor_list.size() - 1),
+          dt(1.0 / resolution),
+          length(total_len(anchor_list, weight_list, resolution)),
+          current_length(length) {
+        if (anchor_list.size() != weight_list.size())
+            throw std::invalid_argument("Anchor and weight lists must be of the same size.");
+    }
+
+    static Point bez(const std::array<Point, 4>& b, double t) {
+        Point b1 = b[0] * 2 - b[1];
+        double u = 1 - t;
+        return b[0] * (u * u * u) + b1 * (3 * u * u * t) + b[2] * (3 * u * t * t) +
+               b[3] * (t * t * t);
+    }
+
+    static double len(const std::array<Point, 4>& b, int resolution) {
+        Point prev = bez(b, 0);
+
+        const double res = 1.0 / resolution;
+        double len = 0.0;
+
+        for (double i = res; i <= 1; i += res) {
+            Point p = bez(b, i);
+            len += prev.dist(p);
+            prev = p;
+        }
+        return len;
+    }
+
+    static double total_len(const std::vector<Point>& a, const std::vector<Point>& w,
+                            int resolution) {
+        double length = 0;
+        for (int i = 0; i < a.size() - 1; ++i) {
+            length += len({a[i], w[i], a[i + 1], w[i + 1]}, resolution);
+        }
+        return length;
+    }
+
+    Point next() {
+        int section = ceil(current_t * sections);
+        //
     }
 };
 

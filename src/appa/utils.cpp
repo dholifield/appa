@@ -99,7 +99,7 @@ Options TurnConfig::options() const {
 /* Point */
 Point Point::operator+(const Point& other) const { return Point({x + other.x, y + other.y}); }
 Point Point::operator-(const Point& other) const { return Point({x - other.x, y - other.y}); }
-Point Point::operator*(double mult) const { return Point({x * mult, y * mult}); }
+Point Point::operator*(double scalar) const { return Point({x * scalar, y * scalar}); }
 void Point::operator+=(const Point& other) {
     x += other.x;
     y += other.y;
@@ -108,9 +108,9 @@ void Point::operator-=(const Point& other) {
     x -= other.x;
     y -= other.y;
 }
-void Point::operator*=(double mult) {
-    x *= mult;
-    y *= mult;
+void Point::operator*=(double scalar) {
+    x *= scalar;
+    y *= scalar;
 }
 void Point::operator=(const Point& p) {
     x = p.x;
