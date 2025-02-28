@@ -1,6 +1,6 @@
 <img src="./docs/appa.svg">
 
-appa is a simple and intuitive VEX chassis movement library for [PROS](https://pros.cs.purdue.edu/). 
+[appa](https://appa.odom.tech/) is a simple and intuitive VEX chassis movement library for [PROS](https://pros.cs.purdue.edu/). 
 
 The intent of this library it to make chassis movement both intuitive to use and understand. Only recommended configurations are supported, but it is designed to be easy to build upon for custom implementations. 
 
@@ -25,7 +25,7 @@ The intent of this library it to make chassis movement both intuitive to use and
 This library is comprised of two main components: odometry for position tracking and a chassis for robot movement.
 
 ## Odometry
-[Odometry](https://wiki.purduesigbots.com/software/odometry) is used for keeping track of the robots position at all times. The supported configuration is for two tracker wheels, one in the x (forward) and one in the y (left) direction, in combination with an IMU. Here is how to create an instance of odom:
+[Odometry](http://thepilons.ca/wp-content/uploads/2018/10/Tracking.pdf) is used for keeping track of the robots position at all times. The supported configuration is for two tracker wheels, one in the x (forward) and one in the y (left) direction, in combination with an IMU. Here is how to create an instance of odom:
 ```cpp
 appa::Odom odom({7, 1}, // x tracker port
                 {7, 3}, // y tracker port
