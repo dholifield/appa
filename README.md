@@ -77,6 +77,7 @@ appa::TurnConfig turn_config(2.0,        // exit (degrees)
                              {1, 1, 1}); // angular pid gains
 
 appa::Options default_options = {.accel = 50,      // %/s
+                                 .settle = 0       // ms
                                  .timeout = 5000}; // ms
 
 appa::Chassis bot({1, 2, 3},        // left motors
@@ -104,6 +105,7 @@ They can be set by simply putting the variable name and value in brackets like `
 | `double lead` | The lead percentage for boomerang movements | `config.lead` | Decimal % of distance to target |
 | `double lookahead` | The lookahead distance for pure pursuit movements | `config.lookahead` | Linear units |
 | `double exit` | The maximum error to be considered at target | `config.exit` | Linear units for moves, degrees for turns |
+| `int settle` | The time for a movement to stay in target to be considered completed | `0` | Milliseconds |
 | `int timeout` | The maximum allowed time for a movement | `0` or ignore timeout | Milliseconds |
 | `Gains lin_PID` | PID gains for linear movement | `config.lin_PID` | - |
 | `Gains ang_PID` | PID gains for angular movement and turns | `config.ang_PID` | - |
