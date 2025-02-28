@@ -18,6 +18,13 @@ double PID::update(double error, int dt) {
     return (k.p * error) + (k.i * total_error) + (k.d * derivative);
 }
 
+void PID::auto_tune(Chassis& chassis) {
+    // move robot backward 12 inches
+    // set target forward 12 inches with bang bang controller: forward and backward full speed
+    // store millis each time error crosses target and repeat like 30 times
+    // calcuate average oscillation period (maybe ignore first few until steady state)
+}
+
 /* Imu */
 Imu::Imu(std::initializer_list<uint8_t> ports) {
     for (auto port : ports) {
