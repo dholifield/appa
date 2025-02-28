@@ -45,7 +45,7 @@ enum Direction { AUTO, FORWARD, REVERSE, CCW, CW };
 struct Options {
     std::optional<Direction> dir, turn;
     std::optional<double> speed, accel, lead, lookahead, exit;
-    std::optional<int> timeout;
+    std::optional<int> settle, timeout;
     std::optional<Gains> lin_PID, ang_PID;
     std::optional<bool> thru, relative, async;
     std::function<bool()> exit_fn = nullptr;
@@ -84,10 +84,10 @@ struct Point {
 
     Point operator+(const Point& other) const;
     Point operator-(const Point& other) const;
-    Point operator*(double mult) const;
+    Point operator*(double scalar) const;
     void operator+=(const Point& other);
     void operator-=(const Point& other);
-    void operator*=(double mult);
+    void operator*=(double scalar);
     void operator=(const Point& p);
 
     double dist(const Point& other) const;

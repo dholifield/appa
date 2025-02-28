@@ -35,6 +35,7 @@ void Chassis::motion_task(Pose target, const Options options, const Motion motio
     const double lead = options.lead.value();
     const double lookahead = options.lookahead.value();
     const double exit = options.exit.value();
+    const int settle = options.settle.value();
     const int timeout = options.timeout.value();
     PID lin_PID(options.lin_PID.value());
     PID ang_PID(options.ang_PID.value());
@@ -54,9 +55,11 @@ void Chassis::motion_task(Pose target, const Options options, const Motion motio
         target = Pose{pose.p() + target.p().rotate(pose.theta), target.theta + pose.theta};
 
     // timing
-    uint32_t start_time = pros::millis();
-    uint32_t now = pros::millis();
+    uint32_t start_time, now;
+    start_time = now = pros::millis();
+    int settle_time = 0;
     bool running = true;
+    bool settling = false;
 
     // control loop
     while (running && is_running.load()) {
@@ -99,7 +102,9 @@ void Chassis::motion_task(Pose target, const Options options, const Motion motio
         case TURN:
             // error
             if (std::isnan(target.theta)) error = {0.0, pose.angle(target)}; // turn to point
-            else error = {0.0, std::fmod(target.theta - pose.theta, M_PI)};  // turn to heading
+            else
+                error = {0.0,
+                         std::remainder(target.theta - pose.theta, 2 * M_PI)}; // turn to heading
             // direction
             if (dir == REVERSE) error.angular += error.angular > 0 ? -M_PI : M_PI;
             if (turn_dir == CW && error.angular < 0) error.angular += 2 * M_PI;
@@ -147,8 +152,17 @@ void Chassis::motion_task(Pose target, const Options options, const Motion motio
         tank(speeds);
 
         // check exit conditions
+        //   timeout
         if (timeout > 0 && pros::millis() - start_time > timeout) running = false;
-        if (fabs(error.linear) < exit) running = false;
+        //   exit error
+        if (motion == TURN) settling = fabs(error.angular) < to_rad(exit);
+        else settling = fabs(error.linear) < exit;
+        //   settling
+        if (settling) {
+            settle_time += dt;
+            if (settle_time >= settle) running = false;
+        } else settle_time = 0;
+        //   custom lambda
         if (exit_fn && exit_fn()) running = false;
 
         // delay task

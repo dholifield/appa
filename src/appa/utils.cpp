@@ -57,7 +57,8 @@ void Imu::set(double angle) {
 
 /* Options */
 Options Options::defaults() {
-    return Options(AUTO, AUTO, 0.0, 0.0, 0.0, 0.0, 0.0, 0, Gains(), Gains(), false, false, false);
+    return Options(
+        AUTO, AUTO, 0.0, 0.0, 0.0, 0.0, 0.0, 0, 0, Gains(), Gains(), false, false, false);
 }
 
 Options Options::operator<<(const Options& other) const {
@@ -70,6 +71,7 @@ Options Options::operator<<(const Options& other) const {
     if (other.lead) result.lead = other.lead;
     if (other.lookahead) result.lookahead = other.lookahead;
     if (other.exit) result.exit = other.exit;
+    if (other.settle) result.settle = other.settle;
     if (other.timeout) result.timeout = other.timeout;
     if (other.lin_PID) result.lin_PID = other.lin_PID;
     if (other.ang_PID) result.ang_PID = other.ang_PID;
@@ -99,7 +101,7 @@ Options TurnConfig::options() const {
 /* Point */
 Point Point::operator+(const Point& other) const { return Point({x + other.x, y + other.y}); }
 Point Point::operator-(const Point& other) const { return Point({x - other.x, y - other.y}); }
-Point Point::operator*(double mult) const { return Point({x * mult, y * mult}); }
+Point Point::operator*(double scalar) const { return Point({x * scalar, y * scalar}); }
 void Point::operator+=(const Point& other) {
     x += other.x;
     y += other.y;
@@ -108,9 +110,9 @@ void Point::operator-=(const Point& other) {
     x -= other.x;
     y -= other.y;
 }
-void Point::operator*=(double mult) {
-    x *= mult;
-    y *= mult;
+void Point::operator*=(double scalar) {
+    x *= scalar;
+    y *= scalar;
 }
 void Point::operator=(const Point& p) {
     x = p.x;
@@ -122,7 +124,7 @@ double Point::dist(const Point& other) const {
 }
 double Point::angle(const Point& other, double offset) const {
     Point diff = other - *this;
-    return std::fmod(atan2(diff.y, diff.x) - offset, M_PI);
+    return std::remainder(atan2(diff.y, diff.x) - offset, 2 * M_PI);
 }
 Point Point::rotate(double theta) const {
     if (theta == 0) return *this;
