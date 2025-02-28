@@ -58,7 +58,7 @@ void Imu::set(double angle) {
 /* Options */
 Options Options::defaults() {
     return Options(
-        AUTO, AUTO, 0.0, 0.0, 0.0, 0.0, 0.0, 0, 0, Gains(), Gains(), false, false, false);
+        AUTO, AUTO, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0, 0, Gains(), Gains(), false, false, false);
 }
 
 Options Options::operator<<(const Options& other) const {
@@ -71,6 +71,7 @@ Options Options::operator<<(const Options& other) const {
     if (other.lead) result.lead = other.lead;
     if (other.lookahead) result.lookahead = other.lookahead;
     if (other.exit) result.exit = other.exit;
+    if (other.offset) result.offset = other.offset;
     if (other.settle) result.settle = other.settle;
     if (other.timeout) result.timeout = other.timeout;
     if (other.lin_PID) result.lin_PID = other.lin_PID;

@@ -35,6 +35,7 @@ void Chassis::motion_task(Pose target, const Options options, const Motion motio
     const double lead = options.lead.value();
     const double lookahead = options.lookahead.value();
     const double exit = options.exit.value();
+    const double offset = options.offset.value();
     const int settle = options.settle.value();
     const int timeout = options.timeout.value();
     PID lin_PID(options.lin_PID.value());
@@ -73,8 +74,9 @@ void Chassis::motion_task(Pose target, const Options options, const Motion motio
                 carrot = target.project(-error.linear * lead);
                 // carrot = (pose - target).p().rotate(-target.theta); // maybe better boomerang?
                 // carrot = target.project(-fabs(carrot.y) - error.linear * lead);
-                error = {pose.dist(carrot), pose.angle(carrot)};
+                error.angular = pose.angle(carrot);
             }
+            error.linear -= offset;
             // direction
             if (auto_dir) dir = fabs(error.angular) > M_PI_2 ? REVERSE : FORWARD;
             if (dir == REVERSE) {
@@ -86,12 +88,9 @@ void Chassis::motion_task(Pose target, const Options options, const Motion motio
             // error
             carrot = (target.p() - pose.p()).rotate(-target.theta);
             double dist = carrot.x + lookahead - fabs(carrot.y) / 2; // circle approximation
-            if (dist > 0) {
-                running = false;
-                continue;
-            }
+            if (dist > 0) running = false; // exit when carrot reaches waypoint
             carrot = target.project(dist);
-            error = {pose.dist(target) + path_length, pose.angle(carrot)};
+            error = {pose.dist(target) + path_length - offset, pose.angle(carrot)};
             // direction
             if (dir == REVERSE) {
                 error.angular += error.angular > 0 ? -M_PI : M_PI;
