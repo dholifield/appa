@@ -19,7 +19,7 @@ class PID {
     PID(double kp, double ki, double kd);
     void reset(double error = 0.0);
     double update(double error, int dt);
-    static void auto_tune(Chassis& chassis);
+    static void auto_tune(Chassis& chassis, double speed);
 };
 
 /* Imu */

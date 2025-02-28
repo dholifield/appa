@@ -18,11 +18,19 @@ double PID::update(double error, int dt) {
     return (k.p * error) + (k.i * total_error) + (k.d * derivative);
 }
 
-void PID::auto_tune(Chassis& chassis) {
-    // move robot backward 12 inches
-    // set target forward 12 inches with bang bang controller: forward and backward full speed
-    // store millis each time error crosses target and repeat like 30 times
-    // calcuate average oscillation period (maybe ignore first few until steady state)
+// Ziegler-Nichols PID tuning
+void PID::auto_tune(Chassis& chassis, double speed) {
+    // move robot forward 12 inches
+
+    // set target 6 inches backward with bang bang controller: forward and backward at speed
+
+    // store millis and max error each time robot crosses target and repeat like 30 times
+
+    // calcuate average oscillation period and amplitude (maybe ignore first few until steady state)
+
+    // Ku = 4A/pi/speed:
+    //   PD:  Kp = 0.8*Ku, Kd = 0.1*Ku*Tu
+    //   PID: kp = 0.6*Ku, Ki = 1.2*Ku/Tu, Kd = 0.075*Ku*Tu
 }
 
 /* Imu */
