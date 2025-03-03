@@ -297,6 +297,83 @@ void Chassis::set_brake_mode(const pros::motor_brake_mode_e_t mode) {
     right_motors.set_brake_mode_all(mode);
 }
 
+// Ziegler-Nichols PID tuning
+void Chassis::auto_tune_linear(double speed, bool test) {
+    // set target 6 inches forward with bang bang controller: forward and backward at speed
+    // store millis and max error each time robot crosses target and repeat like 30 times
+    std::vector<uint32_t> times;
+    std::vector<double> amplitudes;
+
+    double distance = 6;
+    odom.set(0, 0, 0);
+
+    for (int i = 0; i <= 20; ++i) {
+        uint32_t time = pros::millis();
+        double x = odom.get().x;
+
+        double min = distance;
+        arcade(speed, 0);
+        while (x < distance) {
+            x = odom.get().x;
+            if (x < min) min = x;
+            pros::delay(10);
+        }
+
+        double max = distance;
+        arcade(-speed, 0);
+        while (x > distance) {
+            x = odom.get().x;
+            if (x > max) max = x;
+            pros::delay(10);
+        }
+
+        times.push_back(pros::millis() - time);
+        amplitudes.push_back(max - min);
+    }
+
+    // calcuate average oscillation period and amplitude (ignore first few until steady state)
+    int skip = 5;  // skip to steady state
+    double Tu = 0; // oscillation period
+    double A = 0;  // amplitude
+
+    for (int i = skip - 1; i < times.size(); ++i) {
+        Tu += times[i];
+        A += amplitudes[i];
+    }
+    Tu /= times.size() - skip;
+    A /= times.size() - skip;
+
+    // Ku = 4A/pi/speed:
+    //   PD:  Kp = 0.8*Ku, Kd = 0.1*Ku*Tu
+    //   PID: kp = 0.6*Ku, Ki = 1.2*Ku/Tu, Kd = 0.075*Ku*Tu
+    double Ku = 4 * A / M_PI / speed;
+    Gains P = {0.5 * Ku, 0.0, 0.0};
+    Gains PI = {0.45 * Ku, 0.54 * Ku / Tu, 0.0};
+    Gains PD = {0.8 * Ku, 0.0, 0.1 * Ku * Tu};
+    Gains PID = {0.6 * Ku, 1.2 * Ku / Tu, 0.075 * Ku * Tu};
+    Gains psn = {0.7 * Ku, 1.75 * Ku / Tu, 0.105 * Ku * Tu};
+    Gains some = {0.3333 * Ku, 0.6667 * Ku / Tu, 0.1111 * Ku * Tu};
+    Gains no = {0.20 * Ku, 0.40 * Ku / Tu, 0.0667 * Ku * Tu};
+
+    printf("Auto Tune Results\n");
+    printf("  Ku = %.5f, Tu = %.5f\n", Ku, Tu);
+    printf("  P:\n    P = %.5f\n", P.p);
+    printf("  PD:\n    P = %.5f, D = %.5f\n", PD.p, PD.d);
+    printf("  PID:\n    P = %.5f, I = %.5f, D = %.5f\n", PID.p, PID.i, PID.d);
+    printf("  Pessen Integration Rule:\n    P = %.5f, I = %.5f, D = %.5f\n", psn.p, psn.i, psn.d);
+    printf("  Some Overshoot:\n    P = %.5f, I = %.5f, D = %.5f\n", some.p, some.i, some.d);
+    printf("  No Overshoot:\n    P = %.5f, I = %.5f, D = %.5f\n", no.p, no.i, no.d);
+
+    if (test) {
+        Options test_options = {.speed = speed, .settle = 250, .timeout = 3000, .lin_PID = no};
+        stop();
+        pros::delay(250);
+        move(12, test_options);
+        pros::delay(250);
+        move(-12, test_options);
+    }
+}
+
 } // namespace appa
 
 /**

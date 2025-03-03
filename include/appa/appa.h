@@ -88,5 +88,8 @@ class Chassis {
     void stop(bool stop_task = true);
 
     void set_brake_mode(pros::motor_brake_mode_e mode);
+
+    void auto_tune_linear(double speed, bool test);
+    void auto_tune_angular(double speed, bool test);
 };
 } // namespace appa
