@@ -39,6 +39,7 @@ void Chassis::motion_task(Pose target, const Options options, const Motion motio
     const double lookahead = options.lookahead.value();
     const double exit = options.exit.value();
     const double offset = options.offset.value();
+    const double speed_thresh = options.exit_speed.value() * dt / 1000;
     const int settle = options.settle.value();
     const int timeout = options.timeout.value();
     PID lin_PID(options.lin_PID.value());
@@ -48,6 +49,7 @@ void Chassis::motion_task(Pose target, const Options options, const Motion motio
     const std::function<bool()> exit_fn = options.exit_fn;
 
     Pose pose = odom.get();
+    Pose prev_pose;
     Point error, carrot, speeds;
     double lin_speed, ang_speed;
 
@@ -80,9 +82,17 @@ void Chassis::motion_task(Pose target, const Options options, const Motion motio
                 error.angular = pose.angle(carrot);
             }
             error.linear -= offset;
+            // different error scaling for small distances
             if (error.linear < min_error) {
+                // stop moving if close and perpendicular to target
                 if (fabs(error.angular) > (M_PI / 2)) running = false;
-                error.angular = 0;
+                // slow linear speed when close and parallel to target
+                error.linear *= cos(error.angular);
+                // turn to target theta when close
+                if (!std::isnan(target.theta))
+                    error.angular = std::remainder(target.theta - pose.theta, 2 * M_PI);
+                // stop turning if no target theta
+                else error.angular = 0;
             } else if (error.linear < 2 * min_error)
                 error.angular *= (error.linear - min_error) / min_error;
             // direction
@@ -169,6 +179,9 @@ void Chassis::motion_task(Pose target, const Options options, const Motion motio
             settle_time += dt;
             if (settle_time >= settle) running = false;
         } else settle_time = 0;
+        //   minimum speed
+        if (pose.dist(prev_pose) < speed_thresh) running = false;
+        prev_pose = pose;
         //   custom lambda
         if (exit_fn && exit_fn()) running = false;
 

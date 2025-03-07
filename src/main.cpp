@@ -19,9 +19,10 @@ appa::TurnConfig turn_config(2.0,         // exit (degrees)
                              50,          // speed (%)
                              {10, 0, 0}); // angular pid gains
 
-appa::Options default_options = {.accel = 100,  // %/s
-                                 .settle = 0,   // ms
-                                 .timeout = 0}; // ms
+appa::Options default_options = {.accel = 100,      // %/s
+                                 .exit_speed = 0.1, // in/s
+                                 .settle = 0,       // ms
+                                 .timeout = 0};     // ms
 
 appa::Chassis bot({-10, -9, 8, 3, -1},    // left motors
                   {17, 19, -18, -12, 11}, // right motors
