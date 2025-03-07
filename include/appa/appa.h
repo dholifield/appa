@@ -55,6 +55,7 @@ class Chassis {
     Options df_move, df_turn;
     Point prev_speeds = {0.0, 0.0};
     double path_length = 0.0;
+    double min_error;
 
     pros::Task* chassis_task = nullptr;
     pros::Mutex chassis_mutex;

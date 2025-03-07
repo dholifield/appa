@@ -7,7 +7,10 @@ Chassis::Chassis(const std::initializer_list<int8_t>& left_motors,
                  const std::initializer_list<int8_t>& right_motors, Odom& odom,
                  const MoveConfig& move_config, const TurnConfig& turn_config,
                  const Options& default_options)
-    : left_motors(left_motors), right_motors(right_motors), odom(odom) {
+    : left_motors(left_motors),
+      right_motors(right_motors),
+      odom(odom),
+      min_error(move_config.min_error) {
 
     df_move = Options::defaults() << default_options << move_config.options();
     df_turn = Options::defaults() << default_options << turn_config.options();
@@ -77,6 +80,11 @@ void Chassis::motion_task(Pose target, const Options options, const Motion motio
                 error.angular = pose.angle(carrot);
             }
             error.linear -= offset;
+            if (error.linear < min_error) {
+                if (fabs(error.angular) > (M_PI / 2)) running = false;
+                error.angular = 0;
+            } else if (error.linear < 2 * min_error)
+                error.angular *= (error.linear - min_error) / min_error;
             // direction
             if (auto_dir) dir = fabs(error.angular) > M_PI_2 ? REVERSE : FORWARD;
             if (dir == REVERSE) {

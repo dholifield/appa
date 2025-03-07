@@ -10,7 +10,8 @@ appa::Odom odom({2, 3},  // x tracker port
 appa::MoveConfig move_config(1.0,        // exit (inches)
                              85,         // speed (%)
                              0.5,        // lead (%)
-                             6,          // lookahead (inches)
+                             6.0,        // lookahead (inches)
+                             2.0,        // min error (inches)
                              {10, 0, 1}, // linear pid gains
                              {0, 0, 0}); // angular pid gains
 

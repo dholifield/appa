@@ -59,7 +59,7 @@ struct Options {
 };
 
 struct MoveConfig {
-    double exit, speed, lead, lookahead;
+    double exit, speed, lead, lookahead, min_error;
     Gains lin_PID, ang_PID;
 
     Options options() const;
