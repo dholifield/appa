@@ -32,7 +32,9 @@ appa::Chassis bot({-10, -9, 8, 3, -1},    // left motors
 void initialize() {
     // start odometry with debugging
     odom.start();
-    odom.debug = true;
+    odom.debug = false;
+
+    bot.auto_tune_linear(20, true);
 }
 
 void disabled() {}

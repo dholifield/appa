@@ -307,6 +307,8 @@ void Chassis::auto_tune_linear(double speed, bool test) {
     double distance = 6;
     odom.set(0, 0, 0);
 
+    printf("Starting Auto Tune...\n");
+
     for (int i = 0; i <= 20; ++i) {
         uint32_t time = pros::millis();
         double x = odom.get().x;
@@ -332,12 +334,12 @@ void Chassis::auto_tune_linear(double speed, bool test) {
     }
 
     // calcuate average oscillation period and amplitude (ignore first few until steady state)
-    int skip = 5;  // skip to steady state
-    double Tu = 0; // oscillation period
-    double A = 0;  // amplitude
+    int skip = 5;    // skip to steady state
+    double Tu = 0.0; // oscillation period
+    double A = 0.0;  // amplitude
 
     for (int i = skip - 1; i < times.size(); ++i) {
-        Tu += times[i];
+        Tu += times[i] / 1000.0;
         A += amplitudes[i];
     }
     Tu /= times.size() - skip;
