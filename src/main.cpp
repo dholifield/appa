@@ -19,6 +19,15 @@ appa::TurnConfig turn_config(2.0,         // exit (degrees)
                              50,          // speed (%)
                              {10, 0, 0}); // angular pid gains
 
+appa::Config config(1.0,         // linear exit (in)
+                    2.0,         // angular exit (degrees)
+                    2.0,         // angular deadzone (in)
+                    100,         // speed (%)
+                    0.5,         // boomerang lead
+                    6.0,         // pp lookahead (in)
+                    {10, 0, 0},  // linear pid
+                    {10, 0, 0}); // angular pid
+
 appa::Options default_options = {.accel = 100,      // %/s
                                  .exit_speed = 0.1, // in/s
                                  .settle = 0,       // ms

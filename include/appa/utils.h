@@ -58,6 +58,36 @@ struct Options {
     void operator>>=(const Options& other);
 };
 
+struct Config {
+    double linear_exit, angular_exit;
+    double angular_deadzone;
+    double speed;
+    double lead, lookahead;
+    PID linear_PID, angular_PID;
+};
+//                                 // X = used, L = last point
+struct Parameters {                // point  pose  path  turn
+    Direction dir;                 //   X     X     X     X
+    Direction turn;                //                     X
+    double speed;                  //   X     X     X     X
+    double accel;                  //   X     X     X     X
+    double lead;                   //         X     L
+    double lookahead;              //               X
+    double lin_exit;               //   X     X     L
+    double ang_exit;               //         X     L     X
+    double ang_dz;                 //         X     L     X
+    double offset;                 //   X     X     L
+    double exit_speed;             //   X     X     X     X
+    int settle;                    //   X     X     L     X
+    int timeout;                   //   X     X     X     X
+    std::function<bool()> exit_fn; //   X     X     X     X
+    Gains lin_PID;                 //   X     X     X
+    Gains ang_PID;                 //   X     X     X     X
+    bool thru;                     //   X     X     X     X
+    bool relative;                 //   X     X     X     X
+    bool async;                    //   X     X     X     X
+};
+
 struct MoveConfig {
     double exit, speed, lead, lookahead, min_error;
     Gains lin_PID, ang_PID;
