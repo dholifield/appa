@@ -43,11 +43,29 @@ enum Direction { AUTO, FORWARD, REVERSE, CCW, CW };
 #define CW appa::CW
 
 struct Options {
-    std::optional<Direction> dir, turn;
-    std::optional<double> speed, accel, lead, lookahead, exit, offset, exit_speed;
-    std::optional<int> settle, timeout;
-    std::optional<Gains> lin_PID, ang_PID;
-    std::optional<bool> thru, relative, async;
+    // direction
+    std::optional<Direction> dir;
+    std::optional<Direction> turn;
+    // flags
+    std::optional<bool> thru;
+    std::optional<bool> relative;
+    std::optional<bool> async;
+    // speed
+    std::optional<double> speed;
+    std::optional<double> accel;
+    std::optional<Gains> lin_PID;
+    std::optional<Gains> ang_PID;
+    // carrot
+    std::optional<double> lead;
+    std::optional<double> lookahead;
+    // exit conditions
+    std::optional<double> lin_exit;
+    std::optional<double> ang_exit;
+    std::optional<double> ang_dz;
+    std::optional<double> offset;
+    std::optional<double> exit_speed;
+    std::optional<int> settle;
+    std::optional<int> timeout;
     std::function<bool()> exit_fn = nullptr;
 
     static Options defaults();
@@ -59,18 +77,27 @@ struct Options {
 };
 
 struct Config {
-    double linear_exit, angular_exit;
-    double angular_deadzone;
-    double speed;
+    double speed, accel;
+    Gains linear_PID, angular_PID;
     double lead, lookahead;
-    PID linear_PID, angular_PID;
+    double linear_exit, angular_exit;
+    double angular_deadzone, exit_speed;
+    int settle, timeout;
+
+    Options options() const;
 };
+
 //                                 // X = used, L = last point
 struct Parameters {                // point  pose  path  turn
     Direction dir;                 //   X     X     X     X
     Direction turn;                //                     X
+    bool thru;                     //   X     X     X     X
+    bool relative;                 //   X     X     X     X
+    bool async;                    //   X     X     X     X
     double speed;                  //   X     X     X     X
     double accel;                  //   X     X     X     X
+    Gains lin_PID;                 //   X     X     X
+    Gains ang_PID;                 //   X     X     X     X
     double lead;                   //         X     L
     double lookahead;              //               X
     double lin_exit;               //   X     X     L
@@ -81,24 +108,6 @@ struct Parameters {                // point  pose  path  turn
     int settle;                    //   X     X     L     X
     int timeout;                   //   X     X     X     X
     std::function<bool()> exit_fn; //   X     X     X     X
-    Gains lin_PID;                 //   X     X     X
-    Gains ang_PID;                 //   X     X     X     X
-    bool thru;                     //   X     X     X     X
-    bool relative;                 //   X     X     X     X
-    bool async;                    //   X     X     X     X
-};
-
-struct MoveConfig {
-    double exit, speed, lead, lookahead, min_error;
-    Gains lin_PID, ang_PID;
-
-    Options options() const;
-};
-
-struct TurnConfig {
-    double exit, speed;
-    Gains ang_PID;
-    Options options() const;
 };
 
 struct Point {

@@ -69,9 +69,7 @@ class Chassis {
 
   public:
     Chassis(const std::initializer_list<int8_t>& left_motors,
-            const std::initializer_list<int8_t>& right_motors, Odom& odom,
-            const MoveConfig& move_config, const TurnConfig& turn_config,
-            const Options& default_options = {});
+            const std::initializer_list<int8_t>& right_motors, Odom& odom, const Config& config);
     ~Chassis();
 
     void task();

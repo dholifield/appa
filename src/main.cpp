@@ -7,38 +7,23 @@ appa::Odom odom({2, 3},  // x tracker port
                 {2, 0},  // tracker linear offset (inches)
                 45);     // tracker angular offset (degrees)
 
-appa::MoveConfig move_config(1.0,        // exit (inches)
-                             85,         // speed (%)
-                             0.5,        // lead (%)
-                             6.0,        // lookahead (inches)
-                             2.0,        // min error (inches)
-                             {10, 0, 1}, // linear pid gains
-                             {0, 0, 0}); // angular pid gains
-
-appa::TurnConfig turn_config(2.0,         // exit (degrees)
-                             50,          // speed (%)
-                             {10, 0, 0}); // angular pid gains
-
-appa::Config config(1.0,         // linear exit (in)
-                    2.0,         // angular exit (degrees)
-                    2.0,         // angular deadzone (in)
-                    100,         // speed (%)
-                    0.5,         // boomerang lead
-                    6.0,         // pp lookahead (in)
-                    {10, 0, 0},  // linear pid
-                    {10, 0, 0}); // angular pid
-
-appa::Options default_options = {.accel = 100,      // %/s
-                                 .exit_speed = 0.1, // in/s
-                                 .settle = 0,       // ms
-                                 .timeout = 0};     // ms
+appa::Config config(100,        // speed (%)
+                    400,        // accel (%/s)
+                    {10, 0, 0}, // linear PID
+                    {10, 0, 0}, // angular PID
+                    0.5,        // lead (%)
+                    6.0,        // lookahead (in)
+                    1.0,        // linear exit (in)
+                    2.0,        // angular exit (deg)
+                    2.0,        // angular deadzone (in)
+                    0.1,        // exit speed (in/s)
+                    0,          // settle (ms)
+                    0);         // timeout (ms)
 
 appa::Chassis bot({-10, -9, 8, 3, -1},    // left motors
                   {17, 19, -18, -12, 11}, // right motors
                   odom,                   // odom
-                  move_config,            // move configuration
-                  turn_config,            // turn configuration
-                  default_options);       // default options
+                  config);                // configuration
 
 void initialize() {
     // start odometry with debugging
