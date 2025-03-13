@@ -58,17 +58,15 @@ struct Options {
     // carrot
     std::optional<double> lead;
     std::optional<double> lookahead;
+    std::optional<double> offset;
     // exit conditions
     std::optional<double> lin_exit;
     std::optional<double> ang_exit;
     std::optional<double> ang_dz;
-    std::optional<double> offset;
     std::optional<double> exit_speed;
     std::optional<int> settle;
     std::optional<int> timeout;
     std::function<bool()> exit_fn = nullptr;
-
-    static Options defaults();
 
     Options operator<<(const Options& other) const;
     Options operator>>(const Options& other) const;
@@ -83,8 +81,6 @@ struct Config {
     double linear_exit, angular_exit;
     double angular_deadzone, exit_speed;
     int settle, timeout;
-
-    Options options() const;
 };
 
 //                                 // X = used, L = last point
@@ -100,14 +96,17 @@ struct Parameters {                // point  pose  path  turn
     Gains ang_PID;                 //   X     X     X     X
     double lead;                   //         X     L
     double lookahead;              //               X
+    double offset;                 //   X     X     L
     double lin_exit;               //   X     X     L
     double ang_exit;               //         X     L     X
     double ang_dz;                 //         X     L     X
-    double offset;                 //   X     X     L
     double exit_speed;             //   X     X     X     X
     int settle;                    //   X     X     L     X
     int timeout;                   //   X     X     X     X
     std::function<bool()> exit_fn; //   X     X     X     X
+
+    Parameters(const Config& config);
+    void apply(const Options& options);
 };
 
 struct Point {

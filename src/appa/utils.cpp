@@ -106,19 +106,48 @@ Options Options::operator>>(const Options& other) const { return other << *this;
 void Options::operator<<=(const Options& other) { *this = *this << other; }
 void Options::operator>>=(const Options& other) { *this = *this >> other; }
 
-Options Config::options() const {
-    return Options{.speed = speed,
-                   .accel = accel,
-                   .lin_PID = linear_PID,
-                   .ang_PID = angular_PID,
-                   .lead = lead,
-                   .lookahead = lookahead,
-                   .lin_exit = linear_exit,
-                   .ang_exit = angular_exit,
-                   .ang_dz = angular_deadzone,
-                   .exit_speed = exit_speed,
-                   .settle = settle,
-                   .timeout = timeout};
+Parameters::Parameters(const Config& config) {
+    dir = AUTO;
+    turn = AUTO;
+    thru = false;
+    relative = false;
+    async = false;
+    speed = config.speed;
+    accel = config.accel;
+    lin_PID = config.linear_PID;
+    ang_PID = config.angular_PID;
+    lead = config.lead;
+    lookahead = config.lookahead;
+    offset = 0.0;
+    lin_exit = config.linear_exit;
+    ang_exit = config.angular_exit;
+    ang_dz = config.angular_deadzone;
+    exit_speed = config.exit_speed;
+    settle = config.settle;
+    timeout = config.timeout;
+    exit_fn = nullptr;
+}
+
+void Parameters::apply(const Options& opts) {
+    if (opts.dir) dir = opts.dir.value();
+    if (opts.turn) turn = opts.turn.value();
+    if (opts.thru) thru = opts.thru.value();
+    if (opts.relative) relative = opts.relative.value();
+    if (opts.async) async = opts.async.value();
+    if (opts.speed) speed = opts.speed.value();
+    if (opts.accel) accel = opts.accel.value();
+    if (opts.lin_PID) lin_PID = opts.lin_PID.value();
+    if (opts.ang_PID) ang_PID = opts.ang_PID.value();
+    if (opts.lead) lead = opts.lead.value();
+    if (opts.lookahead) lookahead = opts.lookahead.value();
+    if (opts.offset) offset = opts.offset.value();
+    if (opts.lin_exit) lin_exit = opts.lin_exit.value();
+    if (opts.ang_exit) ang_exit = opts.ang_exit.value();
+    if (opts.ang_dz) ang_dz = opts.ang_dz.value();
+    if (opts.exit_speed) exit_speed = opts.exit_speed.value();
+    if (opts.settle) settle = opts.settle.value();
+    if (opts.timeout) timeout = opts.timeout.value();
+    if (opts.exit_fn) exit_fn = opts.exit_fn;
 }
 
 /* Point */
