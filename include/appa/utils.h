@@ -44,7 +44,7 @@ enum Direction { AUTO, FORWARD, REVERSE, CCW, CW };
 
 struct Options {
     std::optional<Direction> dir, turn;
-    std::optional<double> speed, accel, lead, lookahead, exit, offset;
+    std::optional<double> speed, accel, lead, lookahead, exit, offset, exit_speed;
     std::optional<int> settle, timeout;
     std::optional<Gains> lin_PID, ang_PID;
     std::optional<bool> thru, relative, async;
@@ -59,7 +59,7 @@ struct Options {
 };
 
 struct MoveConfig {
-    double exit, speed, lead, lookahead;
+    double exit, speed, lead, lookahead, min_error;
     Gains lin_PID, ang_PID;
 
     Options options() const;
