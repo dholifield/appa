@@ -4,6 +4,57 @@
 
 namespace appa {
 
+/* Point */
+struct Point {
+    // clang-format off
+    union {
+        struct { double x, y; };
+        struct { double left, right; };
+        struct { double linear, angular; };
+    };
+    // clang-format on
+
+    Point(double x = NAN, double y = NAN) : x(x), y(y) {}
+
+    Point operator+(const Point& other) const;
+    Point operator-(const Point& other) const;
+    Point operator*(double scalar) const;
+    void operator+=(const Point& other);
+    void operator-=(const Point& other);
+    void operator*=(double scalar);
+    void operator=(const Point& p);
+
+    double dist(const Point& other) const;
+    double angle(const Point& other, double offset = 0.0) const;
+    Point rotate(double theta) const;
+};
+
+/* Pose */
+struct Pose {
+    double x, y, theta;
+
+    Pose(double x = NAN, double y = NAN, double theta = NAN) : x(x), y(y), theta(theta) {}
+    Pose(const Point& p, double theta) : x(p.x), y(p.y), theta(theta) {}
+
+    operator Point() const;
+    Point p() const;
+    Pose operator+(const Point& p) const;
+    Pose operator-(const Point& p) const;
+    void operator+=(const Point& p);
+    void operator-=(const Point& p);
+    void operator=(const Point& p);
+
+    Pose operator+(const Pose& p) const;
+    Pose operator-(const Pose& p) const;
+    void operator+=(const Pose& p);
+    void operator-=(const Pose& p);
+    void operator=(const Pose& p);
+
+    double dist(const Point& other) const;
+    double angle(const Point& other) const;
+    Point project(double d) const;
+};
+
 /* PID */
 struct Gains {
     double p, i, d;
@@ -33,7 +84,7 @@ struct Imu {
     void set(double angle);
 };
 
-/* Utils */
+/* Options and Parameters */
 enum Direction { AUTO, FORWARD, REVERSE, CCW, CW };
 
 #define AUTO appa::AUTO
@@ -41,6 +92,18 @@ enum Direction { AUTO, FORWARD, REVERSE, CCW, CW };
 #define REVERSE appa::REVERSE
 #define CCW appa::CCW
 #define CW appa::CW
+
+struct ExitSpeed {
+    double linear, angular;
+    int settle;
+
+    ExitSpeed(double linear = 0.0, double angular = 0.0, int settle = 0)
+        : linear(linear), angular(angular), settle(settle) {}
+    bool check(Pose dp, int dt);
+
+  private:
+    int timer = 0;
+};
 
 struct Options {
     // direction
@@ -63,7 +126,7 @@ struct Options {
     std::optional<double> lin_exit;
     std::optional<double> ang_exit;
     std::optional<double> ang_dz;
-    std::optional<double> exit_speed;
+    std::optional<ExitSpeed> exit_speed;
     std::optional<int> settle;
     std::optional<int> timeout;
     std::function<bool()> exit_fn = nullptr;
@@ -79,11 +142,12 @@ struct Config {
     Gains linear_PID, angular_PID;
     double lead, lookahead;
     double linear_exit, angular_exit;
-    double angular_deadzone, exit_speed;
+    double angular_deadzone;
+    ExitSpeed exit_speed;
     int settle, timeout;
 };
 
-//                                 // X = used, L = last point
+// Parameters                      // X = used, L = last point
 struct Parameters {                // point  pose  path  turn
     Direction dir;                 //   X     X     X     X
     Direction turn;                //                     X
@@ -100,64 +164,16 @@ struct Parameters {                // point  pose  path  turn
     double lin_exit;               //   X     X     L
     double ang_exit;               //         X     L     X
     double ang_dz;                 //         X     L     X
-    double exit_speed;             //   X     X     X     X
+    ExitSpeed exit_speed;          //   X     X     X     X
     int settle;                    //   X     X     L     X
     int timeout;                   //   X     X     X     X
     std::function<bool()> exit_fn; //   X     X     X     X
 
     Parameters(const Config& config);
-    void apply(const Options& options);
+    Parameters apply(const Options& options) const;
 };
 
-struct Point {
-    // clang-format off
-    union {
-        struct { double x, y; };
-        struct { double left, right; };
-        struct { double linear, angular; };
-    };
-    // clang-format on
-
-    Point(double x = NAN, double y = NAN) : x(x), y(y) {}
-
-    Point operator+(const Point& other) const;
-    Point operator-(const Point& other) const;
-    Point operator*(double scalar) const;
-    void operator+=(const Point& other);
-    void operator-=(const Point& other);
-    void operator*=(double scalar);
-    void operator=(const Point& p);
-
-    double dist(const Point& other) const;
-    double angle(const Point& other, double offset = 0.0) const;
-    Point rotate(double theta) const;
-};
-
-struct Pose {
-    double x, y, theta;
-
-    Pose(double x = NAN, double y = NAN, double theta = NAN) : x(x), y(y), theta(theta) {}
-    Pose(const Point& p, double theta) : x(p.x), y(p.y), theta(theta) {}
-
-    operator Point() const;
-    Point p() const;
-    Pose operator+(const Point& p) const;
-    Pose operator-(const Point& p) const;
-    void operator+=(const Point& p);
-    void operator-=(const Point& p);
-    void operator=(const Point& p);
-
-    Pose operator+(const Pose& p) const;
-    Pose operator-(const Pose& p) const;
-    void operator+=(const Pose& p);
-    void operator-=(const Pose& p);
-    void operator=(const Pose& p);
-
-    double dist(const Point& other) const;
-    double angle(const Point& other) const;
-    Point project(double d) const;
-};
-
+/* Utils */
 double to_rad(double deg);
 double to_deg(double rad);
 double limit(double val, double limit);

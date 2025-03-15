@@ -52,10 +52,9 @@ class Chassis {
   private:
     pros::MotorGroup left_motors, right_motors;
     Odom& odom;
-    Options df_move, df_turn;
+    Parameters df_params;
     Point prev_speeds = {0.0, 0.0};
     double path_length = 0.0;
-    double min_error;
 
     pros::Task* chassis_task = nullptr;
     pros::Mutex chassis_mutex;
@@ -63,7 +62,7 @@ class Chassis {
 
     enum Motion { MOVE, PATH, TURN };
 
-    void motion_task(Pose target, const Options options, const Motion motion);
+    void motion_task(Pose target, const Parameters prm, const Motion motion);
     void motion_handler(const std::vector<Pose>& target, const Options& options,
                         const Motion& motion);
 
@@ -75,9 +74,10 @@ class Chassis {
     void task();
     void wait();
 
-    void move(Pose target, Options options = {}, const Options& override = {});
-    void follow(const std::vector<Point>& path, Options options = {}, const Options& override = {});
-    void turn(const Point& target, Options options = {}, const Options& override = {});
+    void move(const Pose& target, const Options& options = {}, const Options& override = {});
+    void follow(const std::vector<Point>& path, const Options& options = {},
+                const Options& override = {});
+    void turn(const Point& target, const Options& options = {}, const Options& override = {});
 
     void tank(double left_speed, double right_speed);
     void tank(const Point& speeds);

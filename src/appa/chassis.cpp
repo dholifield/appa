@@ -5,16 +5,8 @@ namespace appa {
 /* Chassis */
 Chassis::Chassis(const std::initializer_list<int8_t>& left_motors,
                  const std::initializer_list<int8_t>& right_motors, Odom& odom,
-                 const MoveConfig& move_config, const TurnConfig& turn_config,
-                 const Options& default_options)
-    : left_motors(left_motors),
-      right_motors(right_motors),
-      odom(odom),
-      min_error(move_config.min_error) {
-
-    df_move = Options::defaults() << default_options << move_config.options();
-    df_turn = Options::defaults() << default_options << turn_config.options();
-}
+                 const Config& config)
+    : left_motors(left_motors), right_motors(right_motors), odom(odom), df_params(config) {}
 
 Chassis::~Chassis() { stop(true); }
 
@@ -26,44 +18,33 @@ void Chassis::wait() {
     }
 }
 
-void Chassis::motion_task(Pose target, const Options options, const Motion motion) {
+void Chassis::motion_task(Pose target, const Parameters prm, const Motion motion) {
     // set up variables
     const int dt = 10; // ms
 
-    Direction dir = options.dir.value();
+    Direction dir = prm.dir;
+    ExitSpeed exit_speed = prm.exit_speed;
     const bool auto_dir = dir == AUTO;
-    const Direction turn_dir = options.turn.value();
-    const double max_speed = options.speed.value();
-    const double accel_step = options.accel.value() * dt / 1000;
-    const double lead = options.lead.value();
-    const double lookahead = options.lookahead.value();
-    const double exit = options.exit.value();
-    const double offset = options.offset.value();
-    const double speed_thresh = options.exit_speed.value() * dt / 1000;
-    const int settle = options.settle.value();
-    const int timeout = options.timeout.value();
-    PID lin_PID(options.lin_PID.value());
-    PID ang_PID(options.ang_PID.value());
-    const bool thru = options.thru.value();
-    const bool relative = options.relative.value();
-    const std::function<bool()> exit_fn = options.exit_fn;
+    const double accel_step = prm.accel * dt / 1000;
+    PID lin_PID(prm.lin_PID);
+    PID ang_PID(prm.ang_PID);
 
-    Pose pose = odom.get();
-    Pose prev_pose;
+    Pose prev_pose, pose = odom.get(); // prev_pose is NAN so first iteration is always false
     Point error, carrot, speeds;
     double lin_speed, ang_speed;
 
     // convert to radians
-    if (!std::isnan(target.theta)) target.theta = to_rad(target.theta);
+    const bool is_pose = !std::isnan(target.theta);
+    if (is_pose) target.theta = to_rad(target.theta);
 
     // relative motion
-    if (relative)
+    if (prm.relative)
         target = Pose{pose.p() + target.p().rotate(pose.theta), target.theta + pose.theta};
 
     // timing
     uint32_t start_time, now;
     start_time = now = pros::millis();
-    int settle_time = 0;
+    int settle_timer = 0;
     bool running = true;
     bool settling = false;
 
@@ -75,26 +56,23 @@ void Chassis::motion_task(Pose target, const Options options, const Motion motio
         case MOVE:
             // error
             error = {pose.dist(target), pose.angle(target)};
-            if (!std::isnan(target.theta)) { // move to pose
-                carrot = target.project(-error.linear * lead);
-                // carrot = (pose - target).p().rotate(-target.theta); // maybe better boomerang?
-                // carrot = target.project(-fabs(carrot.y) - error.linear * lead);
+            if (is_pose) { // move to pose
+                carrot = target.project(-error.linear * prm.lead);
                 error.angular = pose.angle(carrot);
             }
-            error.linear -= offset;
+            error.linear -= prm.offset;
             // different error scaling for small distances
-            if (error.linear < min_error) {
+            if (error.linear < prm.ang_dz) {
                 // stop moving if close and perpendicular to target
                 if (fabs(error.angular) > (M_PI / 2)) running = false;
                 // slow linear speed when close and parallel to target
                 error.linear *= cos(error.angular);
                 // turn to target theta when close
-                if (!std::isnan(target.theta))
-                    error.angular = std::remainder(target.theta - pose.theta, 2 * M_PI);
+                if (is_pose) error.angular = std::remainder(target.theta - pose.theta, 2 * M_PI);
                 // stop turning if no target theta
                 else error.angular = 0;
-            } else if (error.linear < 2 * min_error)
-                error.angular *= (error.linear - min_error) / min_error;
+            } else if (error.linear < 2 * prm.ang_dz)
+                error.angular *= (error.linear - prm.ang_dz) / prm.ang_dz;
             // direction
             if (auto_dir) dir = fabs(error.angular) > M_PI_2 ? REVERSE : FORWARD;
             if (dir == REVERSE) {
@@ -105,10 +83,10 @@ void Chassis::motion_task(Pose target, const Options options, const Motion motio
         case PATH: {
             // error
             carrot = (target.p() - pose.p()).rotate(-target.theta);
-            double dist = carrot.x + lookahead - fabs(carrot.y) / 2; // circle approximation
+            double dist = carrot.x + prm.lookahead - fabs(carrot.y) / 2; // circle approximation
             if (dist > 0) running = false; // exit when carrot reaches waypoint
             carrot = target.project(dist);
-            error = {pose.dist(target) + path_length - offset, pose.angle(carrot)};
+            error = {pose.dist(target) + path_length - prm.offset, pose.angle(carrot)};
             // direction
             if (dir == REVERSE) {
                 error.angular += error.angular > 0 ? -M_PI : M_PI;
@@ -124,8 +102,8 @@ void Chassis::motion_task(Pose target, const Options options, const Motion motio
                          std::remainder(target.theta - pose.theta, 2 * M_PI)}; // turn to heading
             // direction
             if (dir == REVERSE) error.angular += error.angular > 0 ? -M_PI : M_PI;
-            if (turn_dir == CW && error.angular < 0) error.angular += 2 * M_PI;
-            else if (turn_dir == CCW && error.angular > 0) error.angular -= 2 * M_PI;
+            if (prm.turn == CW && error.angular < 0) error.angular += 2 * M_PI;
+            else if (prm.turn == CCW && error.angular > 0) error.angular -= 2 * M_PI;
             break;
         default:
             running = false;
@@ -135,12 +113,12 @@ void Chassis::motion_task(Pose target, const Options options, const Motion motio
         // calculate PID
         lin_speed = lin_PID.update(error.linear, dt);
         ang_speed = ang_PID.update(error.angular, dt);
-        if (thru && motion == MOVE) lin_speed = lin_speed > 0 ? max_speed : -max_speed;
-        else if (thru && motion == TURN) ang_speed = ang_speed > 0 ? max_speed : -max_speed;
+        if (prm.thru && motion == MOVE) lin_speed = lin_speed > 0 ? prm.speed : -prm.speed;
+        else if (prm.thru && motion == TURN) ang_speed = ang_speed > 0 ? prm.speed : -prm.speed;
 
         // apply limits
-        lin_speed = limit(lin_speed, max_speed);
-        ang_speed = limit(ang_speed, max_speed);
+        lin_speed = limit(lin_speed, prm.speed);
+        ang_speed = limit(ang_speed, prm.speed);
 
         // calculate motor speeds
         speeds = {lin_speed - ang_speed, lin_speed + ang_speed};
@@ -168,27 +146,27 @@ void Chassis::motion_task(Pose target, const Options options, const Motion motio
         // set motor speeds
         tank(speeds);
 
-        // check exit conditions
+        // exit conditions
         //   timeout
-        if (timeout > 0 && pros::millis() - start_time > timeout) running = false;
+        if (prm.timeout > 0 && pros::millis() - start_time > prm.timeout) running = false;
         //   exit error
-        if (motion == TURN) settling = fabs(error.angular) < to_rad(exit);
-        else settling = fabs(error.linear) < exit;
+        settling = (error.linear < prm.lin_exit) && // will always be true for turns
+                   (!is_pose || fabs(error.angular) < to_rad(prm.ang_exit)); // skips for point
         //   settling
         if (settling) {
-            settle_time += dt;
-            if (settle_time >= settle) running = false;
-        } else settle_time = 0;
+            settle_timer += dt;
+            if (settle_timer >= prm.settle) running = false;
+        } else settle_timer = 0;
         //   minimum speed
-        if (pose.dist(prev_pose) < speed_thresh) running = false;
+        if (exit_speed.check(pose - prev_pose, dt)) running = false;
         prev_pose = pose;
         //   custom lambda
-        if (exit_fn && exit_fn()) running = false;
+        if (prm.exit_fn && prm.exit_fn()) is_running.store(false);
 
         // delay task
         pros::c::task_delay_until(&now, dt);
     }
-    if (!thru && !(motion == PATH)) stop(false);
+    if (!prm.thru && !(motion == PATH)) stop(false);
 }
 
 void Chassis::motion_handler(const std::vector<Pose>& target, const Options& options,
@@ -199,79 +177,78 @@ void Chassis::motion_handler(const std::vector<Pose>& target, const Options& opt
         delete chassis_task;
     }
 
-    // determine movement lambda
+    // apply options
+    Parameters params = df_params.apply(options);
+
+    // determine movement function
     std::function<void()> movement;
     if (motion == PATH) {
-        movement = [this, path = target, options] {
+        movement = [this, path = target, params] {
             is_running.store(true);
-            for (int i = 0; i < path.size() - 1; ++i) {
-                motion_task(path[i], options, PATH);
+            for (int i = 0; i < path.size() - 1 && is_running.load(); ++i) {
+                motion_task(path[i], params, PATH);
                 path_length -= path[i].dist(path[i + 1]);
             }
-            motion_task(path[path.size() - 1], options, MOVE);
+            motion_task(path[path.size() - 1], params, MOVE);
             is_running.store(false);
         };
     } else {
-        movement = [this, target, options, motion] {
+        movement = [this, target, params, motion] {
             is_running.store(true);
-            motion_task(target[0], options, motion);
+            motion_task(target[0], params, motion);
             is_running.store(false);
         };
     }
 
     // start task if async
-    if (options.async.value()) {
+    if (params.async) {
         chassis_task = new pros::Task(movement, "chassis_task");
     } else {
         movement();
     }
 }
 
-void Chassis::move(Pose target, Options options, const Options& override) {
+void Chassis::move(const Pose& target, const Options& options, const Options& override) {
     // configure target
-    if (std::isnan(target.y)) { // relative straight
-        target.y = 0.0;
-        options.relative = true;
-        options.dir = AUTO;
+    Options combined_options = options << override;
+    Pose target_pose = target;
+    if (std::isnan(target_pose.y)) { // relative straight
+        target_pose.y = 0.0;
+        combined_options <<= {.dir = AUTO, .relative = true};
     }
 
-    // merge options
-    options = df_move << options << override;
-
     // run motion
-    motion_handler({target}, options, MOVE);
+    motion_handler({target_pose}, combined_options, MOVE);
 }
 
-void Chassis::turn(const Point& target, Options options, const Options& override) {
+void Chassis::turn(const Point& target, const Options& options, const Options& override) {
     // configure target
+    Options combined_options = options << override;
     Pose target_pose;
     if (std::isnan(target.y)) target_pose.theta = target.x;
     else target_pose = target;
 
-    // merge options
-    options = df_turn << options << override;
-
     // run motion
-    motion_handler({target_pose}, options, TURN);
+    motion_handler({target_pose}, combined_options, TURN);
 }
 
-void Chassis::follow(const std::vector<Point>& path, Options options, const Options& override) {
+void Chassis::follow(const std::vector<Point>& path, const Options& options,
+                     const Options& override) {
     // merge options
-    options = df_move << options << override;
-    bool relative = options.relative.value();
-    options.relative = false;
+    Options combined_options = options << override;
+
+    bool relative = combined_options.relative.value();
+    combined_options.relative = false;
 
     // copy points to poses and convert if relative
     Pose pose = odom.get();
     std::vector<Pose> poses;
-
-    for (int i = 0; i < path.size(); i++) {
-        Point target = path[i];
+    for (auto target : path) {
         if (relative) target = pose.p() + target.rotate(pose.theta);
         poses.push_back({target, NAN});
     }
 
-    // calculate heading for poses
+    // calculate heading for poses and path length
     poses[0].theta = to_deg(pose.p().angle(path[0]));
     path_length = 0;
     for (int i = 1; i < poses.size(); i++) {
@@ -280,7 +257,7 @@ void Chassis::follow(const std::vector<Point>& path, Options options, const Opti
     }
 
     // run motion
-    motion_handler(poses, options, PATH);
+    motion_handler(poses, combined_options, PATH);
 }
 
 void Chassis::tank(double left_speed, double right_speed) {
@@ -328,29 +305,71 @@ void Chassis::set_brake_mode(const pros::motor_brake_mode_e_t mode) {
 
 /**
  * TESTING:
- * back to back movements. confirm tasks operate as exepected
- * asynchronous movement
- *      async then wait
- *      async then cancel with new movement
+ * back to back movements
  * test all motions
- *      move distance
- *      move to point
- *      move to pose
- *      turn to heading
- *      turn to point
- *      follow path
+ *      - move distance
+ *      - move to point
+ *      - move to pose
+ *      - turn to heading
+ *      - turn to point
+ *      - follow path
  * test all options
- *      dir - move (point + pose) and turn (either)
+ *      - dir
+ *          - move point
+ *          - move pose
+ *          - turn heading
+ *          - turn point
  *          - negative distance for move
- *      turn - turn (CW and CCW)
- *      exit - move (any) and turn (any)
- *      timeout - any
- *      speed - any
- *      accel - any
- *      lead - move (pose)
- *      lookahead - follow
- *      lin_PID - move (any)
- *      ang_PID - move (any) and turn (any)
- *      thru - move (point + pose) and turn (any)
- *      relative - move (point + pose) and turn (heading + point)
+ *      - turn
+ *          - turn CW
+ *          - turn CCW
+ *      - thru
+ *          - move point
+ *          - move pose
+ *          - turn any
+ *      - relative
+ *          - move point
+ *          - move pose
+ *          - turn heading
+ *          - turn point
+ *      - async
+ *          - async then wait
+ *          - async then cancel with new movement
+ *          - async then cancel with stop
+ *      - speed
+ *          - any
+ *      - accel
+ *          - any
+ *      - lin_PID
+ *          - move (any)
+ *      - ang_PID
+ *          - move (any)
+ *          - turn (any)
+ *      - lead
+ *          - move pose
+ *      - lookahead
+ *          - follow
+ *      - offset
+ *          - move point
+ *          - move pose
+ *      - lin_exit
+ *          - move (any)
+ *      - ang_exit
+ *          - move pose
+ *          - turn (any)
+ *      - ang_dz
+ *          - move point
+ *          - move pose
+ *      - exit_speed
+ *          - any
+ *      - settle
+ *          - move point
+ *          - move pose
+ *          - turn (any)
+ *      - timeout
+ *          - any
+ *      - exit_fn
+ *          - move (any)
+ *          - turn (any)
+ *          - follow
  */

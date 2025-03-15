@@ -7,18 +7,18 @@ appa::Odom odom({2, 3},  // x tracker port
                 {2, 0},  // tracker linear offset (inches)
                 45);     // tracker angular offset (degrees)
 
-appa::Config config(100,        // speed (%)
-                    400,        // accel (%/s)
-                    {10, 0, 0}, // linear PID
-                    {10, 0, 0}, // angular PID
-                    0.5,        // lead (%)
-                    6.0,        // lookahead (in)
-                    1.0,        // linear exit (in)
-                    2.0,        // angular exit (deg)
-                    2.0,        // angular deadzone (in)
-                    0.1,        // exit speed (in/s)
-                    0,          // settle (ms)
-                    0);         // timeout (ms)
+appa::Config config(100,             // speed (%)
+                    400,             // accel (%/s)
+                    {10, 0, 0},      // linear PID
+                    {10, 0, 0},      // angular PID
+                    0.5,             // lead (%)
+                    6.0,             // lookahead (in)
+                    1.0,             // linear exit (in)
+                    2.0,             // angular exit (deg)
+                    2.0,             // angular deadzone (in)
+                    {0.1, 0.5, 250}, // exit speed (in, deg, ms)
+                    0,               // settle (ms)
+                    0);              // timeout (ms)
 
 appa::Chassis bot({-10, -9, 8, 3, -1},    // left motors
                   {17, 19, -18, -12, 11}, // right motors

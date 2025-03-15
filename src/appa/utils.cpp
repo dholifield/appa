@@ -55,26 +55,17 @@ void Imu::set(double angle) {
     }
 }
 
-/* Options */
-Options Options::defaults() {
-    return Options(AUTO,    // dir
-                   AUTO,    // turn
-                   false,   // thru
-                   false,   // relative
-                   false,   // async
-                   0.0,     // speed
-                   0.0,     // accel
-                   Gains(), // lin_PID
-                   Gains(), // ang_PID
-                   0.0,     // lead
-                   0.0,     // lookahead
-                   0.0,     // lin_exit
-                   0.0,     // ang_exit
-                   0.0,     // ang_dz
-                   0.0,     // offset
-                   0.0,     // exit_speed
-                   0,       // settle
-                   0);      // timeout
+bool ExitSpeed::check(Pose dp, int dt) {
+    if (settle == 0) return false;
+    double d_d = dp.x * dp.x + dp.y * dp.y;
+    double d_a = fabs(dp.theta);
+    if (d_d < linear * linear && d_a < to_rad(angular)) timer += dt;
+    else timer = 0;
+    if (timer > settle) {
+        timer = 0;
+        return true;
+    }
+    return false;
 }
 
 Options Options::operator<<(const Options& other) const {
@@ -128,26 +119,30 @@ Parameters::Parameters(const Config& config) {
     exit_fn = nullptr;
 }
 
-void Parameters::apply(const Options& opts) {
-    if (opts.dir) dir = opts.dir.value();
-    if (opts.turn) turn = opts.turn.value();
-    if (opts.thru) thru = opts.thru.value();
-    if (opts.relative) relative = opts.relative.value();
-    if (opts.async) async = opts.async.value();
-    if (opts.speed) speed = opts.speed.value();
-    if (opts.accel) accel = opts.accel.value();
-    if (opts.lin_PID) lin_PID = opts.lin_PID.value();
-    if (opts.ang_PID) ang_PID = opts.ang_PID.value();
-    if (opts.lead) lead = opts.lead.value();
-    if (opts.lookahead) lookahead = opts.lookahead.value();
-    if (opts.offset) offset = opts.offset.value();
-    if (opts.lin_exit) lin_exit = opts.lin_exit.value();
-    if (opts.ang_exit) ang_exit = opts.ang_exit.value();
-    if (opts.ang_dz) ang_dz = opts.ang_dz.value();
-    if (opts.exit_speed) exit_speed = opts.exit_speed.value();
-    if (opts.settle) settle = opts.settle.value();
-    if (opts.timeout) timeout = opts.timeout.value();
-    if (opts.exit_fn) exit_fn = opts.exit_fn;
+Parameters Parameters::apply(const Options& opts) const {
+    Parameters result = *this;
+
+    if (opts.dir) result.dir = opts.dir.value();
+    if (opts.turn) result.turn = opts.turn.value();
+    if (opts.thru) result.thru = opts.thru.value();
+    if (opts.relative) result.relative = opts.relative.value();
+    if (opts.async) result.async = opts.async.value();
+    if (opts.speed) result.speed = opts.speed.value();
+    if (opts.accel) result.accel = opts.accel.value();
+    if (opts.lin_PID) result.lin_PID = opts.lin_PID.value();
+    if (opts.ang_PID) result.ang_PID = opts.ang_PID.value();
+    if (opts.lead) result.lead = opts.lead.value();
+    if (opts.lookahead) result.lookahead = opts.lookahead.value();
+    if (opts.offset) result.offset = opts.offset.value();
+    if (opts.lin_exit) result.lin_exit = opts.lin_exit.value();
+    if (opts.ang_exit) result.ang_exit = opts.ang_exit.value();
+    if (opts.ang_dz) result.ang_dz = opts.ang_dz.value();
+    if (opts.exit_speed) result.exit_speed = opts.exit_speed.value();
+    if (opts.settle) result.settle = opts.settle.value();
+    if (opts.timeout) result.timeout = opts.timeout.value();
+    if (opts.exit_fn) result.exit_fn = opts.exit_fn;
+
+    return result;
 }
 
 /* Point */
@@ -229,7 +224,8 @@ Point Pose::project(double d) const { return p() + Point{d * cos(theta), d * sin
 double to_rad(double deg) { return deg * M_PI / 180; }
 double to_deg(double rad) { return rad * 180 / M_PI; }
 double limit(double val, double limit) {
-    return val > limit ? limit : (val < -limit ? -limit : val);
+    int sign = val > 0 ? 1 : -1;
+    return sign * val > limit ? sign * limit : val;
 }
 
 } // namespace appa
