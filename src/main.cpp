@@ -1,5 +1,7 @@
 #include "main.h"
 
+pros::Controller master(CONTROLLER_MASTER);
+
 appa::Odom odom({2, 3},  // x tracker port
                 {2, 1},  // y tracker port
                 {13, 5}, // imu port(s)
@@ -7,34 +9,29 @@ appa::Odom odom({2, 3},  // x tracker port
                 {2, 0},  // tracker linear offset (inches)
                 45);     // tracker angular offset (degrees)
 
-appa::MoveConfig move_config(1.0,        // exit (inches)
-                             85,         // speed (%)
-                             0.5,        // lead (%)
-                             6.0,        // lookahead (inches)
-                             2.0,        // min error (inches)
-                             {10, 0, 1}, // linear pid gains
-                             {0, 0, 0}); // angular pid gains
-
-appa::TurnConfig turn_config(2.0,         // exit (degrees)
-                             50,          // speed (%)
-                             {10, 0, 0}); // angular pid gains
-
-appa::Options default_options = {.accel = 100,      // %/s
-                                 .exit_speed = 0.1, // in/s
-                                 .settle = 0,       // ms
-                                 .timeout = 0};     // ms
+appa::Config config(100,              // speed (%)
+                    500,              // accel (%/s)
+                    {12, 0, 1},       // linear PID
+                    {120, 5, 10},     // angular PID
+                    0.5,              // lead (%)
+                    6.0,              // lookahead (in)
+                    0.5,              // linear exit (in)
+                    1.0,              // angular exit (deg)
+                    6.0,              // angular deadzone (in)
+                    {0.05, 0.1, 250}, // exit speed (in, deg, ms)
+                    50,               // settle (ms)
+                    0);               // timeout (ms)
 
 appa::Chassis bot({-10, -9, 8, 3, -1},    // left motors
                   {17, 19, -18, -12, 11}, // right motors
                   odom,                   // odom
-                  move_config,            // move configuration
-                  turn_config,            // turn configuration
-                  default_options);       // default options
+                  config);                // configuration
 
 void initialize() {
     // start odometry with debugging
     odom.start();
-    odom.debug = true;
+    // odom.debug = true;
+    // bot.debug = true;
 }
 
 void disabled() {}
@@ -43,21 +40,21 @@ void competition_initialize() {}
 
 void autonomous() {
     printf("autonomous started\n");
-    odom.set(0, 0, 0);
+    // odom.set(0, 0, 0);
 
-    printf("running...");
-    bot.move({24, 0}, {.speed = 50});
-    printf("done\n");
+    bot.move({24, 24}, {.speed = 50});
+    master.rumble("-");
     pros::delay(500);
 }
 
 void opcontrol() {
-    pros::Controller master(CONTROLLER_MASTER);
     bot.set_brake_mode(MOTOR_BRAKE_COAST);
     printf("opcontrol started\n");
+    master.rumble(".");
 
     while (true) {
         if (master.get_digital_new_press(DIGITAL_A)) {
+            bot.set_brake_mode(MOTOR_BRAKE_HOLD);
             autonomous();
             bot.set_brake_mode(MOTOR_BRAKE_COAST);
         }

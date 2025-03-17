@@ -55,10 +55,17 @@ void Imu::set(double angle) {
     }
 }
 
-/* Options */
-Options Options::defaults() {
-    return Options(
-        AUTO, AUTO, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0, 0, Gains(), Gains(), false, false, false);
+bool ExitSpeed::check(Pose dp, int dt) {
+    if (settle == 0) return false;
+    double d_d = dp.x * dp.x + dp.y * dp.y;
+    double d_a = fabs(dp.theta);
+    if (d_d < linear * linear && d_a < to_rad(angular)) timer += dt;
+    else timer = 0;
+    if (timer > settle) {
+        timer = 0;
+        return true;
+    }
+    return false;
 }
 
 Options Options::operator<<(const Options& other) const {
@@ -66,20 +73,22 @@ Options Options::operator<<(const Options& other) const {
 
     if (other.dir) result.dir = other.dir;
     if (other.turn) result.turn = other.turn;
+    if (other.thru) result.thru = other.thru;
+    if (other.relative) result.relative = other.relative;
+    if (other.async) result.async = other.async;
     if (other.speed) result.speed = other.speed;
     if (other.accel) result.accel = other.accel;
+    if (other.lin_PID) result.lin_PID = other.lin_PID;
+    if (other.ang_PID) result.ang_PID = other.ang_PID;
     if (other.lead) result.lead = other.lead;
     if (other.lookahead) result.lookahead = other.lookahead;
-    if (other.exit) result.exit = other.exit;
+    if (other.lin_exit) result.lin_exit = other.lin_exit;
+    if (other.ang_exit) result.ang_exit = other.ang_exit;
+    if (other.ang_dz) result.ang_dz = other.ang_dz;
     if (other.offset) result.offset = other.offset;
     if (other.exit_speed) result.exit_speed = other.exit_speed;
     if (other.settle) result.settle = other.settle;
     if (other.timeout) result.timeout = other.timeout;
-    if (other.lin_PID) result.lin_PID = other.lin_PID;
-    if (other.ang_PID) result.ang_PID = other.ang_PID;
-    if (other.thru) result.thru = other.thru;
-    if (other.relative) result.relative = other.relative;
-    if (other.async) result.async = other.async;
     if (other.exit_fn) result.exit_fn = other.exit_fn;
 
     return result;
@@ -88,16 +97,52 @@ Options Options::operator>>(const Options& other) const { return other << *this;
 void Options::operator<<=(const Options& other) { *this = *this << other; }
 void Options::operator>>=(const Options& other) { *this = *this >> other; }
 
-Options MoveConfig::options() const {
-    return Options{.speed = speed,
-                   .lead = lead,
-                   .lookahead = lookahead,
-                   .exit = exit,
-                   .lin_PID = lin_PID,
-                   .ang_PID = ang_PID};
+Parameters::Parameters(const Config& config) {
+    dir = AUTO;
+    turn = AUTO;
+    thru = false;
+    relative = false;
+    async = false;
+    speed = config.speed;
+    accel = config.accel;
+    lin_PID = config.linear_PID;
+    ang_PID = config.angular_PID;
+    lead = config.lead;
+    lookahead = config.lookahead;
+    offset = 0.0;
+    lin_exit = config.linear_exit;
+    ang_exit = config.angular_exit;
+    ang_dz = config.angular_deadzone;
+    exit_speed = config.exit_speed;
+    settle = config.settle;
+    timeout = config.timeout;
+    exit_fn = nullptr;
 }
-Options TurnConfig::options() const {
-    return Options{.speed = speed, .exit = exit, .ang_PID = ang_PID};
+
+Parameters Parameters::apply(const Options& opts) const {
+    Parameters result = *this;
+
+    if (opts.dir) result.dir = opts.dir.value();
+    if (opts.turn) result.turn = opts.turn.value();
+    if (opts.thru) result.thru = opts.thru.value();
+    if (opts.relative) result.relative = opts.relative.value();
+    if (opts.async) result.async = opts.async.value();
+    if (opts.speed) result.speed = opts.speed.value();
+    if (opts.accel) result.accel = opts.accel.value();
+    if (opts.lin_PID) result.lin_PID = opts.lin_PID.value();
+    if (opts.ang_PID) result.ang_PID = opts.ang_PID.value();
+    if (opts.lead) result.lead = opts.lead.value();
+    if (opts.lookahead) result.lookahead = opts.lookahead.value();
+    if (opts.offset) result.offset = opts.offset.value();
+    if (opts.lin_exit) result.lin_exit = opts.lin_exit.value();
+    if (opts.ang_exit) result.ang_exit = opts.ang_exit.value();
+    if (opts.ang_dz) result.ang_dz = opts.ang_dz.value();
+    if (opts.exit_speed) result.exit_speed = opts.exit_speed.value();
+    if (opts.settle) result.settle = opts.settle.value();
+    if (opts.timeout) result.timeout = opts.timeout.value();
+    if (opts.exit_fn) result.exit_fn = opts.exit_fn;
+
+    return result;
 }
 
 /* Point */
@@ -179,7 +224,8 @@ Point Pose::project(double d) const { return p() + Point{d * cos(theta), d * sin
 double to_rad(double deg) { return deg * M_PI / 180; }
 double to_deg(double rad) { return rad * 180 / M_PI; }
 double limit(double val, double limit) {
-    return val > limit ? limit : (val < -limit ? -limit : val);
+    int sign = val > 0 ? 1 : -1;
+    return sign * val > limit ? sign * limit : val;
 }
 
 } // namespace appa
