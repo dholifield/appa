@@ -67,6 +67,8 @@ class Chassis {
                         const Motion& motion);
 
   public:
+    std::atomic<bool> debug{false};
+
     Chassis(const std::initializer_list<int8_t>& left_motors,
             const std::initializer_list<int8_t>& right_motors, Odom& odom, const Config& config);
     ~Chassis();

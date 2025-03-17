@@ -30,7 +30,7 @@ void Chassis::motion_task(Pose target, const Parameters prm, const Motion motion
     PID ang_PID(prm.ang_PID);
 
     Pose prev_pose, pose = odom.get(); // prev_pose is NAN so first iteration is always false
-    Point error, carrot, speeds;
+    Point error, carrot, speeds, abs_speeds;
     double lin_speed, ang_speed;
 
     // convert to radians
@@ -48,6 +48,8 @@ void Chassis::motion_task(Pose target, const Parameters prm, const Motion motion
     bool running = true;
     bool settling = false;
 
+    int counter = 0;
+
     // control loop
     while (running && is_running.load()) {
         // find error and direction based on motion type
@@ -61,24 +63,22 @@ void Chassis::motion_task(Pose target, const Parameters prm, const Motion motion
                 error.angular = pose.angle(carrot);
             }
             error.linear -= prm.offset;
-            // different error scaling for small distances
-            if (error.linear < prm.ang_dz) {
-                // stop moving if close and perpendicular to target
-                if (fabs(error.angular) > (M_PI / 2)) running = false;
-                // slow linear speed when close and parallel to target
-                error.linear *= cos(error.angular);
-                // turn to target theta when close
-                if (is_pose) error.angular = std::remainder(target.theta - pose.theta, 2 * M_PI);
-                // stop turning if no target theta
-                else error.angular = 0;
-            } else if (error.linear < 2 * prm.ang_dz)
-                error.angular *= (error.linear - prm.ang_dz) / prm.ang_dz;
             // direction
             if (auto_dir) dir = fabs(error.angular) > M_PI_2 ? REVERSE : FORWARD;
             if (dir == REVERSE) {
                 error.angular += error.angular > 0 ? -M_PI : M_PI;
                 error.linear *= -1;
             }
+            // different error scaling for small distances
+            if (fabs(error.linear) < prm.ang_dz) {
+                // turn to target theta when close
+                if (is_pose) error.angular = std::remainder(target.theta - pose.theta, 2 * M_PI);
+                // stop turning if no target theta
+                else error.angular = 0;
+            } else if (fabs(error.linear) < 2 * prm.ang_dz)
+                error.angular *= (fabs(error.linear) - prm.ang_dz) / prm.ang_dz;
+            // focus on turning first
+            error.linear *= cos(error.angular);
             break;
         case PATH: {
             // error
@@ -122,24 +122,19 @@ void Chassis::motion_task(Pose target, const Parameters prm, const Motion motion
 
         // calculate motor speeds
         speeds = {lin_speed - ang_speed, lin_speed + ang_speed};
+        abs_speeds = {fabs(speeds.left), fabs(speeds.right)};
 
         // scale motor speeds
-        if (speeds.left > 100) {
-            speeds.right *= 100 / speeds.left;
-            speeds.left = 100;
-        }
-        if (speeds.right > 100) {
-            speeds.left *= 100 / speeds.right;
-            speeds.right = 100;
-        }
+        if (abs_speeds.left > 100) speeds *= 100 / abs_speeds.left;
+        if (abs_speeds.right > 100) speeds *= 100 / abs_speeds.right;
 
         // limit acceleration
         if (accel_step) {
             chassis_mutex.take();
-            if (speeds.left - prev_speeds.left > accel_step)
-                speeds.left = prev_speeds.left + accel_step;
-            if (speeds.right - prev_speeds.right > accel_step)
-                speeds.right = prev_speeds.right + accel_step;
+            if (abs_speeds.left - fabs(prev_speeds.left) > accel_step)
+                speeds.left = prev_speeds.left + (speeds.left > 0 ? accel_step : -accel_step);
+            if (abs_speeds.right - fabs(prev_speeds.right) > accel_step)
+                speeds.right = prev_speeds.right + (speeds.right > 0 ? accel_step : -accel_step);
             chassis_mutex.give();
         }
 
@@ -150,12 +145,12 @@ void Chassis::motion_task(Pose target, const Parameters prm, const Motion motion
         //   timeout
         if (prm.timeout > 0 && pros::millis() - start_time > prm.timeout) running = false;
         //   exit error
-        settling = (error.linear < prm.lin_exit) && // will always be true for turns
-                   (!is_pose || fabs(error.angular) < to_rad(prm.ang_exit)); // skips for point
+        settling = (fabs(error.linear) < prm.lin_exit); // will always be true for turns
+        if (is_pose || motion == TURN) settling *= fabs(error.angular) < to_rad(prm.ang_exit);
         //   settling
         if (settling) {
             settle_timer += dt;
-            if (settle_timer >= prm.settle) running = false;
+            if (settle_timer > prm.settle) running = false;
         } else settle_timer = 0;
         //   minimum speed
         if (exit_speed.check(pose - prev_pose, dt)) running = false;
@@ -165,6 +160,15 @@ void Chassis::motion_task(Pose target, const Parameters prm, const Motion motion
 
         // delay task
         pros::c::task_delay_until(&now, dt);
+
+        if (!(++counter % 10) && debug.load()) {
+            printf("lin: %.2f, ang: %.2f, left: %.2f, right: %.2f\n",
+                   error.linear,
+                   to_deg(error.angular),
+                   speeds.left,
+                   speeds.right);
+            counter = 0;
+        }
     }
     if (!prm.thru && !(motion == PATH)) stop(false);
 }
@@ -209,8 +213,10 @@ void Chassis::motion_handler(const std::vector<Pose>& target, const Options& opt
 }
 
 void Chassis::move(const Pose& target, const Options& options, const Options& override) {
-    // configure target
+    // merge options
     Options combined_options = options << override;
+
+    // configure target
     Pose target_pose = target;
     if (std::isnan(target_pose.y)) { // relative straight
         target_pose.y = 0.0;
@@ -222,8 +228,10 @@ void Chassis::move(const Pose& target, const Options& options, const Options& ov
 }
 
 void Chassis::turn(const Point& target, const Options& options, const Options& override) {
-    // configure target
+    // merge options
     Options combined_options = options << override;
+
+    // configure target
     Pose target_pose;
     if (std::isnan(target.y)) target_pose.theta = target.x;
     else target_pose = target;
