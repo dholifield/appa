@@ -2,6 +2,81 @@
 
 namespace appa {
 
+/* Point */
+Point Point::operator+(const Point& other) const { return Point({x + other.x, y + other.y}); }
+Point Point::operator-(const Point& other) const { return Point({x - other.x, y - other.y}); }
+Point Point::operator*(double scalar) const { return Point({x * scalar, y * scalar}); }
+void Point::operator+=(const Point& other) {
+    x += other.x;
+    y += other.y;
+}
+void Point::operator-=(const Point& other) {
+    x -= other.x;
+    y -= other.y;
+}
+void Point::operator*=(double scalar) {
+    x *= scalar;
+    y *= scalar;
+}
+void Point::operator=(const Point& p) {
+    x = p.x;
+    y = p.y;
+}
+double Point::dist(const Point& other) const {
+    Point diff = *this - other;
+    return sqrt(diff.x * diff.x + diff.y * diff.y);
+}
+double Point::angle(const Point& other, double offset) const {
+    Point diff = other - *this;
+    return std::remainder(atan2(diff.y, diff.x) - offset, 2 * M_PI);
+}
+Point Point::rotate(double theta) const {
+    if (theta == 0) return *this;
+    double sine = sin(theta);
+    double cosine = cos(theta);
+    return {x * cosine - y * sine, x * sine + y * cosine};
+}
+
+/* Pose */
+Pose::operator Point() const { return Point{x, y}; }
+Point Pose::p() const { return {x, y}; }
+Pose Pose::operator+(const Point& p) const { return Pose(x + p.x, y + p.y, theta); }
+Pose Pose::operator-(const Point& p) const { return Pose(x - p.x, y - p.y, theta); }
+void Pose::operator+=(const Point& p) {
+    x += p.x;
+    y += p.y;
+}
+void Pose::operator-=(const Point& p) {
+    x -= p.x;
+    y -= p.y;
+}
+void Pose::operator=(const Point& p) {
+    x = p.x;
+    y = p.y;
+}
+
+Pose Pose::operator+(const Pose& p) const { return Pose(x + p.x, y + p.y, theta + p.theta); }
+Pose Pose::operator-(const Pose& p) const { return Pose(x - p.x, y - p.y, theta - p.theta); }
+void Pose::operator+=(const Pose& p) {
+    x += p.x;
+    y += p.y;
+    theta += theta;
+}
+void Pose::operator-=(const Pose& p) {
+    x -= p.x;
+    y -= p.y;
+    theta -= theta;
+}
+void Pose::operator=(const Pose& p) {
+    x = p.x;
+    y = p.y;
+    theta = p.theta;
+}
+
+double Pose::dist(const Point& other) const { return p().dist(other); }
+double Pose::angle(const Point& other) const { return p().angle(other, theta); }
+Point Pose::project(double d) const { return p() + Point{d * cos(theta), d * sin(theta)}; }
+
 /* PID */
 PID::PID(Gains k) : k(k) { reset(0.0); }
 PID::PID(double kp, double ki, double kd) : k(kp, ki, kd) { reset(0.0); }
@@ -54,6 +129,38 @@ void Imu::set(double angle) {
         imu.set_rotation(-angle);
     }
 }
+
+// Two Tracker
+Tracker::Tracker(uint8_t x_port, uint8_t y_port, Imu imu_port, double tpu, Point linear_offset,
+                 double angular_offset)
+    : type(Type::TWO),
+      imu(std::move(imu_port)),
+      tpu(tpu),
+      linear_offset(linear_offset),
+      angular_offset(to_rad(angular_offset)) {
+    trackers.emplace_back(abs(x_port), abs(x_port) + 1, x_port < 0);
+    trackers.emplace_back(abs(y_port), abs(y_port) + 1, y_port < 0);
+}
+
+Tracker::Tracker(std::array<uint8_t, 2> x_port, std::array<uint8_t, 2> y_port, Imu imu_port,
+                 double tpu, Point linear_offset, double angular_offset)
+    : type(Type::TWO),
+      imu(std::move(imu_port)),
+      tpu(tpu),
+      linear_offset(linear_offset),
+      angular_offset(to_rad(angular_offset)) {
+    trackers.emplace_back((x_port[0], abs(x_port[1]), abs(x_port[1]) + 1), x_port[1] < 0);
+    trackers.emplace_back((y_port[0], abs(y_port[1]), abs(y_port[1]) + 1), y_port[1] < 0);
+}
+
+// Three Tracker
+Tracker::Tracker(uint8_t l_port, uint8_t r_port, uint8_t y_port, double tpu, double width,
+                 Point linear_offset, double angular_offset) {}
+Tracker::Tracker(std::array<uint8_t, 2> l_port, std::array<uint8_t, 2> r_port,
+                 std::array<uint8_t, 2> y_port, double tpu, double width, Point linear_offset,
+                 double angular_offset) {}
+
+Pose Tracker::get() {}
 
 bool ExitSpeed::check(Pose dp, int dt) {
     if (settle == 0) return false;
@@ -144,81 +251,6 @@ Parameters Parameters::apply(const Options& opts) const {
 
     return result;
 }
-
-/* Point */
-Point Point::operator+(const Point& other) const { return Point({x + other.x, y + other.y}); }
-Point Point::operator-(const Point& other) const { return Point({x - other.x, y - other.y}); }
-Point Point::operator*(double scalar) const { return Point({x * scalar, y * scalar}); }
-void Point::operator+=(const Point& other) {
-    x += other.x;
-    y += other.y;
-}
-void Point::operator-=(const Point& other) {
-    x -= other.x;
-    y -= other.y;
-}
-void Point::operator*=(double scalar) {
-    x *= scalar;
-    y *= scalar;
-}
-void Point::operator=(const Point& p) {
-    x = p.x;
-    y = p.y;
-}
-double Point::dist(const Point& other) const {
-    Point diff = *this - other;
-    return sqrt(diff.x * diff.x + diff.y * diff.y);
-}
-double Point::angle(const Point& other, double offset) const {
-    Point diff = other - *this;
-    return std::remainder(atan2(diff.y, diff.x) - offset, 2 * M_PI);
-}
-Point Point::rotate(double theta) const {
-    if (theta == 0) return *this;
-    double sine = sin(theta);
-    double cosine = cos(theta);
-    return {x * cosine - y * sine, x * sine + y * cosine};
-}
-
-/* Pose */
-Pose::operator Point() const { return Point{x, y}; }
-Point Pose::p() const { return {x, y}; }
-Pose Pose::operator+(const Point& p) const { return Pose(x + p.x, y + p.y, theta); }
-Pose Pose::operator-(const Point& p) const { return Pose(x - p.x, y - p.y, theta); }
-void Pose::operator+=(const Point& p) {
-    x += p.x;
-    y += p.y;
-}
-void Pose::operator-=(const Point& p) {
-    x -= p.x;
-    y -= p.y;
-}
-void Pose::operator=(const Point& p) {
-    x = p.x;
-    y = p.y;
-}
-
-Pose Pose::operator+(const Pose& p) const { return Pose(x + p.x, y + p.y, theta + p.theta); }
-Pose Pose::operator-(const Pose& p) const { return Pose(x - p.x, y - p.y, theta - p.theta); }
-void Pose::operator+=(const Pose& p) {
-    x += p.x;
-    y += p.y;
-    theta += theta;
-}
-void Pose::operator-=(const Pose& p) {
-    x -= p.x;
-    y -= p.y;
-    theta -= theta;
-}
-void Pose::operator=(const Pose& p) {
-    x = p.x;
-    y = p.y;
-    theta = p.theta;
-}
-
-double Pose::dist(const Point& other) const { return p().dist(other); }
-double Pose::angle(const Point& other) const { return p().angle(other, theta); }
-Point Pose::project(double d) const { return p() + Point{d * cos(theta), d * sin(theta)}; }
 
 /* Utils */
 double to_rad(double deg) { return deg * M_PI / 180; }
