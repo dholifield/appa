@@ -130,37 +130,43 @@ void Imu::set(double angle) {
     }
 }
 
-// Two Tracker
-Tracker::Tracker(uint8_t x_port, uint8_t y_port, Imu imu_port, double tpu, Point linear_offset,
-                 double angular_offset)
-    : type(Type::TWO),
-      imu(std::move(imu_port)),
-      tpu(tpu),
-      linear_offset(linear_offset),
-      angular_offset(to_rad(angular_offset)) {
-    trackers.emplace_back(abs(x_port), abs(x_port) + 1, x_port < 0);
-    trackers.emplace_back(abs(y_port), abs(y_port) + 1, y_port < 0);
+/* Encoder */
+Encoder::Encoder(int8_t port) : enc(abs(port), abs(port) + 1, port < 0) {}
+Encoder::Encoder(uint8_t expander, int8_t port)
+    : enc({expander, abs(port), abs(port) + 1}, port < 0) {}
+
+/* Tracker */
+Tracker::Tracker(Encoder x_encoder, Encoder y_encoder, Imu imu_port, double tpu)
+    : type(Type::TWO), imu(std::move(imu_port)), tpu(tpu) {
+    trackers.emplace_back(std::move(x_encoder));
+    trackers.emplace_back(std::move(y_encoder));
 }
 
-Tracker::Tracker(std::array<uint8_t, 2> x_port, std::array<uint8_t, 2> y_port, Imu imu_port,
-                 double tpu, Point linear_offset, double angular_offset)
-    : type(Type::TWO),
-      imu(std::move(imu_port)),
-      tpu(tpu),
-      linear_offset(linear_offset),
-      angular_offset(to_rad(angular_offset)) {
-    trackers.emplace_back((x_port[0], abs(x_port[1]), abs(x_port[1]) + 1), x_port[1] < 0);
-    trackers.emplace_back((y_port[0], abs(y_port[1]), abs(y_port[1]) + 1), y_port[1] < 0);
+Tracker::Tracker(Encoder lx_encoder, Encoder rx_encoder, Encoder y_encoder, double tpu,
+                 double width)
+    : type(Type::THREE), tpu(tpu) {
+    trackers.emplace_back(std::move(lx_encoder));
+    trackers.emplace_back(std::move(rx_encoder));
+    trackers.emplace_back(std::move(y_encoder));
 }
 
-// Three Tracker
-Tracker::Tracker(uint8_t l_port, uint8_t r_port, uint8_t y_port, double tpu, double width,
-                 Point linear_offset, double angular_offset) {}
-Tracker::Tracker(std::array<uint8_t, 2> l_port, std::array<uint8_t, 2> r_port,
-                 std::array<uint8_t, 2> y_port, double tpu, double width, Point linear_offset,
-                 double angular_offset) {}
-
-Pose Tracker::get() {}
+Pose Tracker::get() {
+    switch (type) {
+    case Type::TWO:
+        double x = trackers[0].get_value() * tpu;
+        double y = trackers[1].get_value() * tpu;
+        double theta = to_rad(imu.get());
+        return Pose(x, y, theta);
+    case Type::THREE:
+        double l = trackers[0].get_value() * tpu;
+        double r = trackers[1].get_value() * tpu;
+        double y = trackers[2].get_value() * tpu;
+        double theta = (r - l) / width;
+        double x = (r + l) / 2;
+        return Pose(x, y, theta);
+    }
+    return Pose();
+}
 
 bool ExitSpeed::check(Pose dp, int dt) {
     if (settle == 0) return false;

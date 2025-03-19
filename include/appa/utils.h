@@ -76,7 +76,7 @@ class PID {
 struct Imu {
     std::vector<pros::Imu> imus{};
 
-    Imu(std::initializer_list<uint8_t> ports);
+    Imu(std::initializer_list<uint8_t> ports = {});
     Imu(uint8_t port);
 
     bool calibrate();
@@ -84,26 +84,27 @@ struct Imu {
     void set(double angle);
 };
 
+/* Encoder */
+struct Encoder {
+    pros::adi::Encoder enc;
+
+    Encoder(int8_t port);
+    Encoder(uint8_t expander, int8_t port);
+
+    double get_value();
+};
+
 /* Trackers */
 struct Tracker {
     enum class Type { TWO, THREE };
     Imu imu;
     double tpu, width;
-    Point linear_offset;
-    double angular_offset;
-    std::vector<pros::adi::Encoder> trackers{};
+    std::vector<Encoder> trackers{};
 
     // Two Tracker
-    Tracker(uint8_t x_port, uint8_t y_port, Imu imu_port, double tpu, Point linear_offset,
-            double angular_offset);
-    Tracker(std::array<uint8_t, 2> x_port, std::array<uint8_t, 2> y_port, Imu imu_port, double tpu,
-            Point linear_offset, double angular_offset);
+    Tracker(Encoder x_encoder, Encoder y_encoder, Imu imu_port, double tpu);
     // Three Tracker
-    Tracker(uint8_t l_port, uint8_t r_port, uint8_t y_port, double tpu, double width,
-            Point linear_offset, double angular_offset);
-    Tracker(std::array<uint8_t, 2> l_port, std::array<uint8_t, 2> r_port,
-            std::array<uint8_t, 2> y_port, double tpu, double width, Point linear_offset,
-            double angular_offset);
+    Tracker(Encoder lx_encoder, Encoder rx_encoder, Encoder y_encoder, double tpu, double width);
 
     Pose get();
 

@@ -16,8 +16,7 @@ class Odom {
     pros::Mutex odom_mutex;
     pros::Task* odom_task = nullptr;
 
-    pros::adi::Encoder x_tracker, y_tracker;
-    appa::Imu imu;
+    Tracker tracker;
     double tpu;
 
     Point tracker_linear_offset;
@@ -30,6 +29,10 @@ class Odom {
          double tracker_angular_offset);
     Odom(std::array<int8_t, 2> x_port, std::array<int8_t, 2> y_port, Imu imu_port, double tpu,
          Point tracker_linear_offset, double tracker_angular_offset);
+    Odom(int8_t l_port, int8_t r_port, int8_t y_port, double tpu, Point tracker_linear_offset,
+         double tracker_angular_offset);
+    Odom(std::array<int8_t, 2> r_port, std::array<int8_t, 2> l_port, std::array<int8_t, 2> y_port,
+         Imu imu_port, double tpu, Point tracker_linear_offset, double tracker_angular_offset);
 
     void task();
     void start();
