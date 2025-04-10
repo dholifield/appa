@@ -96,18 +96,29 @@ struct Encoder {
 
 /* Trackers */
 struct Tracker {
-    enum class Type { TWO_WHEEL_IMU, THREE_WHEEL };
-    Type type;
+    virtual Pose get() const = 0;
+    virtual bool init() = 0;
+};
+
+struct TwoWheelIMU : public Tracker {
+    Encoder x_encoder, y_encoder;
     Imu imu;
-    double tpu, width, angle_offset;
-    std::vector<Encoder> trackers{};
+    double tpu;
 
-    // Two Tracker
-    Tracker(Encoder x_encoder, Encoder y_encoder, Imu imu_port, double tpu);
-    // Three Tracker
-    Tracker(Encoder lx_encoder, Encoder rx_encoder, Encoder y_encoder, double tpu, double width);
+    TwoWheelIMU(Encoder x_encoder, Encoder y_encoder, Imu imu_port, double tpu);
 
-    Pose get();
+    Pose get() const override;
+    bool init() override;
+};
+
+struct ThreeWheel : public Tracker {
+    Encoder rx_encoder, lx_encoder, y_encoder;
+    double tpu, width;
+
+    ThreeWheel(Encoder lx_encoder, Encoder rx_encoder, Encoder y_encoder, double tpu, double width);
+
+    Pose get() const override;
+    bool init() override { return true; };
 };
 
 /* Options and Parameters */
