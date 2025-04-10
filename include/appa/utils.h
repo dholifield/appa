@@ -76,12 +76,38 @@ class PID {
 struct Imu {
     std::vector<pros::Imu> imus{};
 
-    Imu(std::initializer_list<uint8_t> ports);
+    Imu(std::initializer_list<uint8_t> ports = {});
     Imu(uint8_t port);
 
     bool calibrate();
     double get();
     void set(double angle);
+};
+
+/* Encoder */
+struct Encoder {
+    pros::adi::Encoder enc;
+
+    Encoder(int8_t port);
+    Encoder(uint8_t expander, int8_t port);
+
+    double get_value();
+};
+
+/* Trackers */
+struct Tracker {
+    enum class Type { TWO_WHEEL_IMU, THREE_WHEEL };
+    Type type;
+    Imu imu;
+    double tpu, width, angle_offset;
+    std::vector<Encoder> trackers{};
+
+    // Two Tracker
+    Tracker(Encoder x_encoder, Encoder y_encoder, Imu imu_port, double tpu);
+    // Three Tracker
+    Tracker(Encoder lx_encoder, Encoder rx_encoder, Encoder y_encoder, double tpu, double width);
+
+    Pose get();
 };
 
 /* Options and Parameters */

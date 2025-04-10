@@ -4,9 +4,9 @@ namespace appa {
 
 /* Chassis */
 Chassis::Chassis(const std::initializer_list<int8_t>& left_motors,
-                 const std::initializer_list<int8_t>& right_motors, Odom& odom,
+                 const std::initializer_list<int8_t>& right_motors, Localization& loc,
                  const Config& config)
-    : left_motors(left_motors), right_motors(right_motors), odom(odom), df_params(config) {}
+    : left_motors(left_motors), right_motors(right_motors), loc(loc), df_params(config) {}
 
 Chassis::~Chassis() { stop(true); }
 
@@ -29,7 +29,7 @@ void Chassis::motion_task(Pose target, const Parameters prm, const Motion motion
     PID lin_PID(prm.lin_PID);
     PID ang_PID(prm.ang_PID);
 
-    Pose prev_pose, pose = odom.get(); // prev_pose is NAN so first iteration is always false
+    Pose prev_pose, pose = loc.get(); // prev_pose is NAN so first iteration is always false
     Point error, carrot, speeds, abs_speeds;
     double lin_speed, ang_speed;
 
@@ -53,7 +53,7 @@ void Chassis::motion_task(Pose target, const Parameters prm, const Motion motion
     // control loop
     while (running && is_running.load()) {
         // find error and direction based on motion type
-        pose = odom.get();
+        pose = loc.get();
         switch (motion) {
         case MOVE:
             // error
@@ -212,9 +212,9 @@ void Chassis::motion_handler(const std::vector<Pose>& target, const Options& opt
     }
 }
 
-void Chassis::move(const Pose& target, const Options& options, const Options& override) {
+void Chassis::move(const Pose& target, const Options& options, const Options& overwrite) {
     // merge options
-    Options combined_options = options << override;
+    Options combined_options = options << overwrite;
 
     // configure target
     Pose target_pose = target;
@@ -227,9 +227,9 @@ void Chassis::move(const Pose& target, const Options& options, const Options& ov
     motion_handler({target_pose}, combined_options, MOVE);
 }
 
-void Chassis::turn(const Point& target, const Options& options, const Options& override) {
+void Chassis::turn(const Point& target, const Options& options, const Options& overwrite) {
     // merge options
-    Options combined_options = options << override;
+    Options combined_options = options << overwrite;
 
     // configure target
     Pose target_pose;
@@ -241,15 +241,15 @@ void Chassis::turn(const Point& target, const Options& options, const Options& o
 }
 
 void Chassis::follow(const std::vector<Point>& path, const Options& options,
-                     const Options& override) {
+                     const Options& overwrite) {
     // merge options
-    Options combined_options = options << override;
+    Options combined_options = options << overwrite;
 
     bool relative = combined_options.relative.value();
     combined_options.relative = false;
 
     // copy points to poses and convert if relative
-    Pose pose = odom.get();
+    Pose pose = loc.get();
     std::vector<Pose> poses;
     for (auto target : path) {
         if (relative) target = pose.p() + target.rotate(pose.theta);

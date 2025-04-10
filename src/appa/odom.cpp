@@ -3,24 +3,18 @@
 namespace appa {
 
 /* Odom */
-Odom::Odom(int8_t x_port, int8_t y_port, Imu imu_port, double tpu, Point tracker_linear_offset,
-           double tracker_angular_offset)
-    : x_tracker(abs(x_port), abs(x_port) + 1, x_port < 0),
-      y_tracker(abs(y_port), abs(y_port) + 1, y_port < 0),
-      imu(std::move(imu_port)),
-      tpu(tpu),
+Odom::Odom(Tracker tracker, Point tracker_linear_offset, double tracker_angular_offset)
+    : tracker(std::move(tracker)),
       tracker_linear_offset(tracker_linear_offset),
       tracker_angular_offset(to_rad(tracker_angular_offset)) {}
 
-Odom::Odom(std::array<int8_t, 2> x_port, std::array<int8_t, 2> y_port, Imu imu_port, double tpu,
-           Point tracker_linear_offset, double tracker_angular_offset)
-    : x_tracker({x_port[0], abs(x_port[1]), abs(x_port[1]) + 1}, x_port[1] < 0),
-      y_tracker({y_port[0], abs(y_port[1]), abs(y_port[1]) + 1}, y_port[1] < 0),
-      imu(std::move(imu_port)),
-      tpu(tpu),
-      tracker_linear_offset(tracker_linear_offset),
-      tracker_angular_offset(to_rad(tracker_angular_offset)) {}
-
+Odom::~Odom() {
+    if (odom_task) {
+        odom_task->remove();
+        delete odom_task;
+        odom_task = nullptr;
+    }
+}
 void Odom::task() {
     printf("odom task started\n");
     Pose prev_track = {0.0, 0.0, 0.0};
@@ -30,7 +24,7 @@ void Odom::task() {
 
     while (true) {
         // get current sensor values
-        Pose track = {x_tracker.get_value() / tpu, y_tracker.get_value() / tpu, to_rad(imu.get())};
+        Pose track = tracker.get();
 
         // calculate change in sensor values
         Point dtrack = track - prev_track;
@@ -48,7 +42,7 @@ void Odom::task() {
         // update tracker pose
         odom_mutex.take();
         odom_pose += dtrack;
-        odom_pose.theta = track.theta;
+        odom_pose.theta = track.theta + angular_offset;
         odom_mutex.give();
 
         // debugging
@@ -66,24 +60,27 @@ void Odom::task() {
 
 void Odom::start() {
     printf("calibrating imu...");
-    if (!imu.calibrate()) {
+    if (!tracker.imu.calibrate()) {
         printf("\nERROR: IMU reset failed with error code %d\nodometry was not started\n", errno);
         return;
     }
     printf("done\n");
 
     set({0.0, 0.0, 0.0});
-    if (odom_task == nullptr)
-        odom_task = new pros::Task([this] { task(); }, 16, TASK_STACK_DEPTH_DEFAULT, "odom_task");
+    if (odom_task) {
+        odom_task->remove();
+        delete odom_task;
+    }
+    odom_task = new pros::Task([this] { task(); }, 16, TASK_STACK_DEPTH_DEFAULT, "odom_task");
 }
 
-Pose Odom::get() {
+Pose Odom::get() const {
     std::lock_guard<pros::Mutex> lock(odom_mutex);
     // translate the tracker offsets to the global frame
     return odom_pose + tracker_linear_offset.rotate(odom_pose.theta);
 }
 
-Pose Odom::get_local() {
+Pose Odom::get_local() const {
     std::lock_guard<pros::Mutex> lock(odom_mutex);
     return odom_pose;
 }
@@ -100,7 +97,7 @@ void Odom::set_local(Pose pose) {
     if (std::isnan(pose.x)) pose.x = odom_pose.x;
     if (std::isnan(pose.y)) pose.y = odom_pose.y;
     if (std::isnan(pose.theta)) pose.theta = odom_pose.theta;
-    imu.set(pose.theta);
+    else angular_offset = pose.theta - odom_pose.theta;
     odom_pose = pose;
 }
 
@@ -116,7 +113,7 @@ void Odom::set_y(double y) {
 
 void Odom::set_theta(double theta) {
     std::lock_guard<pros::Mutex> lock(odom_mutex);
-    imu.set(theta);
+    angular_offset = theta - odom_pose.theta;
     odom_pose.theta = theta;
 }
 

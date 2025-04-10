@@ -5,9 +5,9 @@
 The intent of this library it to make chassis movement both intuitive to use and understand. Only recommended configurations are supported, but it is designed to be easy to build upon for custom implementations. 
 
 # Features
-- **Odometry Position Tracking** – Using two perpendicular tracking wheels and one or more IMUs to estimate position.
+- **Odometry Position Tracking** – Using combinations of tracking wheels and IMUs to estimate position.
 - **Turning** – Supports turning to a specific heading or facing a target point.
-- **Movements** – Allows movement by a set distance, to a specific point, or to a pose.
+- **Movements** – Allows movement by a relative distance, to a specific point, or to a pose.
 - **Path Following** – Follow a pre-defined path using pure pursuit.
 - **Customizable Parameters** - All movement parameters are fully customizable, designed for readability and ease of use.
 - **Flexible Control** – Has many options including asynchronous movements and custom lambda exit conditions.
@@ -25,21 +25,23 @@ The intent of this library it to make chassis movement both intuitive to use and
 This library is comprised of two main components: odometry for position tracking and a chassis for robot movement.
 
 ## Odometry
-[Odometry](http://thepilons.ca/wp-content/uploads/2018/10/Tracking.pdf) is used for keeping track of the robots position at all times. The supported configuration is for two tracker wheels, one in the x (forward) and one in the y (left) direction, in combination with an IMU. Here is how to create an instance of odom:
+[Odometry](http://thepilons.ca/wp-content/uploads/2018/10/Tracking.pdf) is used for keeping track of the robots position at all times. The two supported configurations are: two tracker wheels, one in the x and one in the y direction, in combination with an IMU; and three tracker wheels, two parallel in the x direction and one in the y direction. Here is how to create an instance of odom:
 ```cpp
-appa::Odom odom({7, 1}, // x tracker port
-                {7, 3}, // y tracker port
-                8,      // imu port
-                300,    // encoder ticks per unit (inches)
-                {5, 0}, // tracker linear offset (inches)
-                45);    // tracker angular offset (degrees)
+appa::Tracker tracker({2, 3},  // x encoder
+                      {2, 1},  // y encoder
+                      {13, 5}, // imus
+                      321.5);  // tpu (ticks per inch)
+
+appa::Odom odom(tracker, // tracker
+                {2, 0},  // linear offset (inches)
+                45);     // angular offset (degrees)
 ```
 
-- The tracker ports can be `port` or `{expander port, port}`. Negative port reverses the direction.
+- The tracker encoder ports can be `port` or `{expander port, port}`. Negative port reverses the direction.
 - The imu port can be `port` or `{port1, port2, ...}` for averaging multiple imus.
 - TPU should be experimentally determined by moving the robot a known distance and recording the encoder output `ticks / distance`. The distance can be in any unit you choose, but must stay consistent throughout all of your code. Most often inches.
-- The linear offset is `{x, y}` which is the distance from your tracking center to your center of mass.
-- The angular offset can be used for [angled tracker wheel](https://youtu.be/TqMNuXfKgMc?si=iwc8nQkSW-A0ZFeG&t=36) configurations, as long as the two wheels are perpendicular.
+- The linear offset is `{x, y}` how much to offset your tracking center, e.g. if you want it to be at your center of mass.
+- The angular offset can be used for [angled tracker wheel](https://youtu.be/TqMNuXfKgMc?si=iwc8nQkSW-A0ZFeG&t=36) configurations, as long as the wheels are perpendicular.
 
 To start odometry, simply call `odom.start()`, usually during initialization.
 
@@ -56,78 +58,98 @@ Odometry will do its work in the background after you start it, and should be pa
 odom.set(24, 12, 90);
 // get the robot's pose
 Pose p = odom.get();
-// set the tracking offset (if COG changes)
+// set the tracking offset (e.g. if COG changes)
 // note: this doesn't change tracking, just the .get() function (used in movements)
 odom.set_offset({5, 0});
+// print useful odometry information to the terminal
+odom.debug = true;
 ```
 
 ## Chassis
 The chassis is whats used to control the robot. Only differential drive robots are supported in this library. Most holonomic drives will work fine, but won't take advantage of its capabilities. The chassis contains configurations for the different movement types as well as optional options. Information on tuning a PID can be found [here](https://wiki.purduesigbots.com/software/control-algorithms/pid-controller). Here is how to make a chassis:
 
 ```cpp
-appa::MoveConfig move_config(1.0,        // exit (inches)
-                             85,         // speed (%)
-                             0.5,        // lead (%)
-                             6,          // lookahead (inches)
-                             {1, 1, 1},  // linear pid gains
-                             {1, 1, 1}); // angular pid gains
+appa::Config config(100,              // speed (%)
+                    500,              // accel (%/s)
+                    {12, 0, 1},       // linear PID
+                    {120, 5, 10},     // angular PID
+                    0.5,              // lead (%)
+                    6.0,              // lookahead (in)
+                    0.5,              // linear exit (in)
+                    1.0,              // angular exit (deg)
+                    6.0,              // angular deadzone (in)
+                    {0.05, 0.1, 250}, // exit speed (in, deg, ms)
+                    50,               // settle (ms)
+                    0);               // timeout (ms)
 
-appa::TurnConfig turn_config(2.0,        // exit (degrees)
-                             50,         // speed (%)
-                             {1, 1, 1}); // angular pid gains
-
-appa::Options default_options = {.accel = 50,      // %/s
-                                 .settle = 0,      // ms
-                                 .timeout = 5000}; // ms
-
-appa::Chassis bot({1, 2, 3},        // left motors
-                  {-4, -5, -6},     // right motors
-                  odom,             // odom
-                  move_config,      // move configuration
-                  turn_config,      // turn configuration
-                  default_options); // default options
+appa::Chassis bot({-10, -9, 8, 3, -1},    // left motors
+                  {17, 19, -18, -12, 11}, // right motors
+                  odom,                   // odom
+                  config);                // configuration
 ```
+- Config is used to set all the required and default movement parameters. These are explained in more detail below.
 - Left and Right motors are provided in a list. Negative reverses the motor direction.
-- Move and turn configurations set default parameters for those movements.
-- Default options will be shared by all movements and used if nothing is specified when a movement is called. Options and are described below.
 
-### Options
-Options contain different parameters for a chassis movement. The purpose of options are to make it very easy and readable to modify any chassis movement for highly customizable autonomous programs. They are, as the name implies, optional and can be used to change the default options and configurations.
+### Options & Parameters
+Options contain different parameters for a chassis movement. The purpose of options are to make it very easy and readable to modify any chassis movement, allowing highly customizable autonomous programs. They are, as the name implies, optional and can be used to overwrite the default parameters defined in the configuration.
 
-They can be set by simply putting the variable name and value in brackets like `{.speed = 100}`. You can set as many options as you want separated by commas, but **they must be in the same order as the list below**. Options can also easily be combined using the `<<` and `>>` operators. For example, `opts1 << opts2` will override options in `opts1` with any set in `opts2`. If `opts2` is empty, the the resulting options will be equal to `opts1`. Options are as follows:
+They can be set by simply putting the variable name and value in brackets like `{.speed = 100}`. You can set as many options as you want separated by commas, but **they must be in the same order as the list below**. Options can also easily be combined using the `<<` and `>>` operators. For example, `opts1 << opts2` will overwrite options in `opts1` with any set in `opts2`. If `opts2` is empty, the the resulting options will be equal to `opts1`. Options are as follows:
 
 | Option | Description | Default | Units |
 | - | - | - | - |
 | `Direction dir` | The direction of the movement. | `AUTO` for move, `FORWARD` for turns and follow | `AUTO`, `FORWARD`, or `REVERSE` |
 | `Direction turn` | The rotating direction of a turn | `AUTO` | `AUTO`, `CCW`, or `CW` |
-| `double speed` | The maximum speed of a movement | `config.speed` | % of max voltage |
-| `double accel` | The maximum acceleration of a movement | `0` or ignore acceleration limits | Speed (%) per second |
-| `double lead` | The lead percentage for boomerang movements | `config.lead` | Decimal % of distance to target |
-| `double lookahead` | The lookahead distance for pure pursuit movements | `config.lookahead` | Linear units |
-| `double exit` | The maximum error to be considered at target | `config.exit` | Linear units for moves, degrees for turns |
-| `double offset` | The offset distance from a move target | `0` | Linear units |
-| `int settle` | The time for a movement to stay in target to be considered completed | `0` | Milliseconds |
-| `int timeout` | The maximum allowed time for a movement | `0` or ignore timeout | Milliseconds |
-| `Gains lin_PID` | PID gains for linear movement | `config.lin_PID` | - |
-| `Gains ang_PID` | PID gains for angular movement and turns | `config.ang_PID` | - |
 | `bool thru` | `true` for through movement | `false` | - |
 | `bool relative` | `true` for relative movement | `false` | - |
 | `bool async` | `true` for asynchronous movement | `false` | - |
+| `double speed` | The maximum speed of a movement | `config.speed` | % of max voltage |
+| `double accel` | The maximum acceleration of a movement | `0` or ignore acceleration limits | Speed (%) per second |
+| `Gains lin_PID` | PID gains for linear movement | `config.lin_PID` | - |
+| `Gains ang_PID` | PID gains for angular movement and turns | `config.ang_PID` | - |
+| `double lead` | The lead percentage for boomerang movements | `config.lead` | Decimal % of distance to target |
+| `double lookahead` | The lookahead distance for pure pursuit movements | `config.lookahead` | Linear units |
+| `double offset` | The offset distance from a move target | `0` | Linear units |
+| `double lin_exit` | The maximum linear error to be considered at target | `config.lin_exit` | Linear units |
+| `double ang_exit` | The maximum angular error to be considered at target | `config.ang_exit` | Degrees |
+| `double ang_dz` | The minimum linear error to enable the angular component | `config.ang_dz` | Linear units |
+| `ExitSpeed exit_speed` | The minimum speeds to exit a movement | `config.exit_speed` | Linear/Degrees/ms |
+| `int settle` | The time for a movement to stay in target to be considered completed | `0` | Milliseconds |
+| `int timeout` | The maximum allowed time for a movement | `0` or ignore timeout | Milliseconds |
 | `function<bool()> exit_fn` | custom exit with lambda function | `nullptr` | - |
 
->Options that default to configurations will ignore those set in the default_options in the constructor. Any other options that were set with default_options will override the defaults above. Options that don't apply to a movement will be ignored.
+<!-- | Parameter            | point | pose | path | turn |
+|----------------------|-------|------|------|------|
+| `Direction dir`       |   X   |   X  |   X  |   X  |
+| `Direction turn`      |       |      |      |   X  |
+| `bool thru`           |   X   |   X  |   X  |   X  |
+| `bool relative`       |   X   |   X  |   X  |   X  |
+| `bool async`          |   X   |   X  |   X  |   X  |
+| `double speed`        |   X   |   X  |   X  |   X  |
+| `double accel`        |   X   |   X  |   X  |   X  |
+| `Gains lin_PID`       |   X   |   X  |   X  |      |
+| `Gains ang_PID`       |   X   |   X  |   X  |   X  |
+| `double lead`         |       |   X  |   L  |      |
+| `double lookahead`    |       |      |   X  |      |
+| `double offset`       |   X   |   X  |   L  |      |
+| `double lin_exit`     |   X   |   X  |   L  |      |
+| `double ang_exit`     |       |   X  |   L  |   X  |
+| `double ang_dz`       |       |   X  |   L  |   X  |
+| `ExitSpeed exit_speed`|   X   |   X  |   X  |   X  |
+| `int settle`          |   X   |   X  |   L  |   X  |
+| `int timeout`         |   X   |   X  |   X  |   X  |
+| `std::function<bool()> exit_fn` | X   |   X  |   X  |   X  | -->
 
 ### Movements
-Currently, there are 3 different motion commands: `move(target, options, override)`, `turn(target, options, override)`, and `follow(path, options, override)`. This makes it very easy to control the chassis. `move` targets can be a single number for a relative straight movement, a point to drive to, or a target pose which uses the boomerang controller. `turn` targets can be a single number for a target heading, or a point to face towards. `follow` targets must be a vector of points. Options will be set as `options << override` for the purpose of allowing the user to use a set of predefined options, and also manually set others for a specific movement. The movement parameters will automatically default to configurations or default options for those not specified. Movements can be done like:
+Currently, there are 3 different motion commands: `move(target, options, overwrite)`, `turn(target, options, overwrite)`, and `follow(path, options, overwrite)`. This makes it very easy to control the chassis. `move` targets can be a single number for a relative straight movement, a point to drive to, or a target pose which uses the boomerang controller. `turn` targets can be a single number for a target heading, or a point to face towards. `follow` targets must be a vector of points. Options will be set as `options << overwrite` for the purpose of allowing the user to use a set of predefined options, and also manually set others for a specific movement. The movement parameters will automatically default to configurations or default options for those not specified. Movements can be done like:
 
 ```cpp
-std::vector<Point> path1 = {{24, 0}, {24, 24}, {0, 24}, {0, 0}}; // path with 4 points
+std::vector<appa::Point> path1 = {{24, 0}, {24, 24}, {0, 24}, {0, 0}}; // path with 4 points
 
 bot.move(-10);                                     // move backwards 10 units (inches)
 bot.move({24, 0, 90});                             // move to pose {24, 0, 90}
-bot.move({24, 24}, {.speed = 100, .async = true}); // move to point {24, 24} asynchronously at max speed
+bot.move({24, 24}, {.async = true, .speed = 100}); // move to point {24, 24} asynchronously at max speed
 bot.turn({0, 0}, {.dir = REVERSE});                // turn so the rear faces {0, 0}
-bot.turn(180, {.turn = CCW, .relative = true});    // turn 180 degrees CCW
+bot.turn(180, {.turn = CCW, .relative = true});    // turn 180 degrees CCW, relatively
 bot.follow(path1, {.lookahead = 4});               // follow path1 with a lookahead distance of 4in
 ```
 
@@ -135,7 +157,7 @@ Options also make it very easy to tune specific types of motions and use them th
 
 ```cpp
 // preset and tuned options
-appa::Options thru = {.exit = 4, .thru = true};
+appa::Options thru = {.thru = true, .lin_exit = 4};
 appa::Options fast = {.speed = 100, .accel = 500};
 appa::Options precise = {.speed = 50, .accel = 50, .lin_PID = appa::Gains{5, 0, 1}};
 appa::Options goal_grab = {.exit_fn = [] { return claw.has_goal(); }};
@@ -160,7 +182,7 @@ void opcontrol() {
 }
 ```
 
-Please go through the header file `include/appa/appa.h` to see all available functions. Other useful chassis commands include:
+Please go through the headers files in `include/appa/` to see all available functions. Other useful chassis commands include:
 
 ```cpp
 bot.wait();                           // wait for async movement to stop
@@ -170,3 +192,7 @@ bot.stop();                           // stop moving
 
 ### Coordinate System:
 <img src="./docs/coordinate.svg" width="300">
+
+# Customization
+...
+<!-- Although one of the two supported odometry tracking configurations are recommended, you may want to use your own implementation. Appa is designed in a way to make doing this easy. -->
