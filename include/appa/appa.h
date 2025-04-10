@@ -22,7 +22,7 @@ class Odom : public Localization {
     mutable pros::Mutex odom_mutex;
     pros::Task* odom_task = nullptr;
 
-    Tracker tracker;
+    Tracker& tracker;
     double angular_offset = 0.0;
 
     Point tracker_linear_offset;
@@ -31,7 +31,7 @@ class Odom : public Localization {
   public:
     std::atomic<bool> debug{false};
 
-    Odom(Tracker tracker, Point tracker_linear_offset, double tracker_angular_offset);
+    Odom(Tracker& tracker, Point tracker_linear_offset, double tracker_angular_offset);
     ~Odom();
 
     void task();

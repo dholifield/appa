@@ -3,10 +3,10 @@
 
 pros::Controller master(CONTROLLER_MASTER);
 
-appa::Tracker tracker({2, 3},  // x encoder
-                      {2, 1},  // y encoder
-                      {13, 5}, // imus
-                      321.5);  // tpu (ticks per inch)
+appa::TwoWheelIMU tracker({2, 3},  // x encoder
+                          {2, 1},  // y encoder
+                          {13, 5}, // imus
+                          321.5);  // tpu (ticks per inch)
 
 appa::Odom odom(tracker, // tracker
                 {2, 0},  // linear offset (inches)

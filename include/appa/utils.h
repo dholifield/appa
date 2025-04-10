@@ -96,10 +96,11 @@ struct Encoder {
 
 /* Trackers */
 struct Tracker {
-    virtual Pose get() const = 0;
+    virtual Pose get() = 0;
     virtual bool init() = 0;
 };
 
+// Two Wheeled with IMU
 struct TwoWheelIMU : public Tracker {
     Encoder x_encoder, y_encoder;
     Imu imu;
@@ -107,17 +108,18 @@ struct TwoWheelIMU : public Tracker {
 
     TwoWheelIMU(Encoder x_encoder, Encoder y_encoder, Imu imu_port, double tpu);
 
-    Pose get() const override;
+    Pose get() override;
     bool init() override;
 };
 
+// Three Wheeled
 struct ThreeWheel : public Tracker {
     Encoder rx_encoder, lx_encoder, y_encoder;
     double tpu, width;
 
     ThreeWheel(Encoder lx_encoder, Encoder rx_encoder, Encoder y_encoder, double tpu, double width);
 
-    Pose get() const override;
+    Pose get() override;
     bool init() override { return true; };
 };
 

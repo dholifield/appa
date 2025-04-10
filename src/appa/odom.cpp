@@ -3,8 +3,8 @@
 namespace appa {
 
 /* Odom */
-Odom::Odom(Tracker tracker, Point tracker_linear_offset, double tracker_angular_offset)
-    : tracker(std::move(tracker)),
+Odom::Odom(Tracker& tracker, Point tracker_linear_offset, double tracker_angular_offset)
+    : tracker(tracker),
       tracker_linear_offset(tracker_linear_offset),
       tracker_angular_offset(to_rad(tracker_angular_offset)) {}
 
@@ -59,9 +59,9 @@ void Odom::task() {
 }
 
 void Odom::start() {
-    printf("calibrating imu...");
-    if (!tracker.imu.calibrate()) {
-        printf("\nERROR: IMU reset failed with error code %d\nodometry was not started\n", errno);
+    printf("calibrating tracker...");
+    if (!tracker.init()) {
+        printf("\nERROR: Tracker failed to initialize %d\nodometry was not started\n", errno);
         return;
     }
     printf("done\n");

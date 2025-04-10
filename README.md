@@ -196,13 +196,28 @@ bot.stop();                           // stop moving
 # Customization
 Although using one of the two supported odometry tracking configurations is recommended, you may want to use your own implementation or an entirely different method of localization. Appa is designed in a way to make doing this easy.
 
-## Custom Localizer
+## Custom Localization
 When creating a `Chassis`, it takes in a `Localization` object and uses only the `Pose get();` function to retreive the current position. If you want to implement your own localization system, simply create a subclass derived from the `Localization` class and override the `get()` function like this:
 ```cpp
-class YourLocalizer : public Localization {
-    appa::Pose get() const override;
+class YourLocalization : public appa::Localization {
+    appa::Pose get() const override {
+        // your implementation
+        return appa::Pose(x, y, theta);
+    }
 }
 ```
-Then just implement the get function however you need so it returns a `Pose`.
 
 ## Custom Odometry Tracking Configuration
+Implementing your own odometry tracking configuration can be done in a similar way using the `Tracker` object as a parent. Configure the `get();` function to return a `Pose` and `init();` to return a boolean that the initialization was successful. Here is how to do this:
+```cpp
+class YourTracker : public appa::Tracker {
+    appa::Pose get() override {
+        // your implementation
+        return appa::Pose(x, y, theta);
+    }
+    bool init() override {
+        // your implementation
+        return successful;
+    }
+}
+```
