@@ -96,9 +96,10 @@ struct Encoder {
 
 /* Trackers */
 struct Tracker {
-    enum class Type { TWO, THREE };
+    enum class Type { TWO_WHEEL_IMU, THREE_WHEEL };
+    Type type;
     Imu imu;
-    double tpu, width;
+    double tpu, width, angle_offset;
     std::vector<Encoder> trackers{};
 
     // Two Tracker
@@ -107,9 +108,7 @@ struct Tracker {
     Tracker(Encoder lx_encoder, Encoder rx_encoder, Encoder y_encoder, double tpu, double width);
 
     Pose get();
-
-  private:
-    Type type;
+    void set_angle(double angle);
 };
 
 /* Options and Parameters */

@@ -25,14 +25,8 @@ class Odom {
   public:
     std::atomic<bool> debug{false};
 
-    Odom(int8_t x_port, int8_t y_port, Imu imu_port, double tpu, Point tracker_linear_offset,
-         double tracker_angular_offset);
-    Odom(std::array<int8_t, 2> x_port, std::array<int8_t, 2> y_port, Imu imu_port, double tpu,
-         Point tracker_linear_offset, double tracker_angular_offset);
-    Odom(int8_t l_port, int8_t r_port, int8_t y_port, double tpu, Point tracker_linear_offset,
-         double tracker_angular_offset);
-    Odom(std::array<int8_t, 2> r_port, std::array<int8_t, 2> l_port, std::array<int8_t, 2> y_port,
-         Imu imu_port, double tpu, Point tracker_linear_offset, double tracker_angular_offset);
+    Odom(Tracker tracker, Point tracker_linear_offset, double tracker_angular_offset);
+    ~Odom();
 
     void task();
     void start();

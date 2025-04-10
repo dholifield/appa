@@ -1,13 +1,16 @@
 #include "main.h"
+#include "appa/utils.h"
 
 pros::Controller master(CONTROLLER_MASTER);
 
-appa::Odom odom({2, 3},  // x tracker port
-                {2, 1},  // y tracker port
-                {13, 5}, // imu port(s)
-                321.5,   // encoder ticks per unit (inches)
-                {2, 0},  // tracker linear offset (inches)
-                45);     // tracker angular offset (degrees)
+appa::Tracker tracker({2, 3},  // x encoder
+                      {2, 1},  // y encoder
+                      {13, 5}, // imus
+                      321.5);  // tpu (ticks per inch)
+
+appa::Odom odom(tracker, // tracker
+                {2, 0},  // linear offset (inches)
+                45);     // angular offset (degrees)
 
 appa::Config config(100,              // speed (%)
                     500,              // accel (%/s)
@@ -28,7 +31,7 @@ appa::Chassis bot({-10, -9, 8, 3, -1},    // left motors
                   config);                // configuration
 
 void initialize() {
-    // start odometry with debugging
+    // start odometry
     odom.start();
     // odom.debug = true;
     // bot.debug = true;

@@ -102,6 +102,7 @@ Imu::Imu(std::initializer_list<uint8_t> ports) {
 Imu::Imu(uint8_t port) { imus.emplace_back(port); }
 
 bool Imu::calibrate() {
+    if (imus.empty()) return true;
     for (auto& imu : imus) {
         imu.reset(false);
         imu.set_data_rate(5);
@@ -134,17 +135,18 @@ void Imu::set(double angle) {
 Encoder::Encoder(int8_t port) : enc(abs(port), abs(port) + 1, port < 0) {}
 Encoder::Encoder(uint8_t expander, int8_t port)
     : enc({expander, abs(port), abs(port) + 1}, port < 0) {}
+double Encoder::get_value() { return enc.get_value(); }
 
 /* Tracker */
 Tracker::Tracker(Encoder x_encoder, Encoder y_encoder, Imu imu_port, double tpu)
-    : type(Type::TWO), imu(std::move(imu_port)), tpu(tpu) {
+    : type(Type::TWO_WHEEL_IMU), imu(std::move(imu_port)), tpu(tpu), angle_offset(0.0) {
     trackers.emplace_back(std::move(x_encoder));
     trackers.emplace_back(std::move(y_encoder));
 }
 
 Tracker::Tracker(Encoder lx_encoder, Encoder rx_encoder, Encoder y_encoder, double tpu,
                  double width)
-    : type(Type::THREE), tpu(tpu) {
+    : type(Type::THREE_WHEEL), tpu(tpu), width(width), angle_offset(0.0) {
     trackers.emplace_back(std::move(lx_encoder));
     trackers.emplace_back(std::move(rx_encoder));
     trackers.emplace_back(std::move(y_encoder));
@@ -152,22 +154,35 @@ Tracker::Tracker(Encoder lx_encoder, Encoder rx_encoder, Encoder y_encoder, doub
 
 Pose Tracker::get() {
     switch (type) {
-    case Type::TWO:
+    case Type::TWO_WHEEL_IMU: {
         double x = trackers[0].get_value() * tpu;
         double y = trackers[1].get_value() * tpu;
         double theta = to_rad(imu.get());
         return Pose(x, y, theta);
-    case Type::THREE:
+        break;
+    }
+    case Type::THREE_WHEEL: {
         double l = trackers[0].get_value() * tpu;
         double r = trackers[1].get_value() * tpu;
         double y = trackers[2].get_value() * tpu;
-        double theta = (r - l) / width;
+        double theta = (r - l) / width + angle_offset;
         double x = (r + l) / 2;
         return Pose(x, y, theta);
+        break;
+    }
     }
     return Pose();
 }
 
+void Tracker::set_angle(double angle) {
+    if (type == Type::TWO_WHEEL_IMU) {
+        imu.set(angle);
+    } else if (type == Type::THREE_WHEEL) {
+        angle_offset = angle - get().theta;
+    }
+}
+
+/* ExitSpeed */
 bool ExitSpeed::check(Pose dp, int dt) {
     if (settle == 0) return false;
     double d_d = dp.x * dp.x + dp.y * dp.y;
@@ -181,6 +196,7 @@ bool ExitSpeed::check(Pose dp, int dt) {
     return false;
 }
 
+/* Options */
 Options Options::operator<<(const Options& other) const {
     Options result = *this;
 
@@ -210,6 +226,7 @@ Options Options::operator>>(const Options& other) const { return other << *this;
 void Options::operator<<=(const Options& other) { *this = *this << other; }
 void Options::operator>>=(const Options& other) { *this = *this >> other; }
 
+/* Parameters */
 Parameters::Parameters(const Config& config) {
     dir = AUTO;
     turn = AUTO;
