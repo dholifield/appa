@@ -117,7 +117,7 @@ They can be set by simply putting the variable name and value in brackets like `
 | `int timeout` | The maximum allowed time for a movement | `0` or ignore timeout | Milliseconds |
 | `function<bool()> exit_fn` | custom exit with lambda function | `nullptr` | - |
 
-| Parameter            | point | pose | path | turn |
+<!-- | Parameter            | point | pose | path | turn |
 |----------------------|-------|------|------|------|
 | `Direction dir`       |   X   |   X  |   X  |   X  |
 | `Direction turn`      |       |      |      |   X  |
@@ -137,7 +137,7 @@ They can be set by simply putting the variable name and value in brackets like `
 | `ExitSpeed exit_speed`|   X   |   X  |   X  |   X  |
 | `int settle`          |   X   |   X  |   L  |   X  |
 | `int timeout`         |   X   |   X  |   X  |   X  |
-| `std::function<bool()> exit_fn` | X   |   X  |   X  |   X  |
+| `std::function<bool()> exit_fn` | X   |   X  |   X  |   X  | -->
 
 ### Movements
 Currently, there are 3 different motion commands: `move(target, options, overwrite)`, `turn(target, options, overwrite)`, and `follow(path, options, overwrite)`. This makes it very easy to control the chassis. `move` targets can be a single number for a relative straight movement, a point to drive to, or a target pose which uses the boomerang controller. `turn` targets can be a single number for a target heading, or a point to face towards. `follow` targets must be a vector of points. Options will be set as `options << overwrite` for the purpose of allowing the user to use a set of predefined options, and also manually set others for a specific movement. The movement parameters will automatically default to configurations or default options for those not specified. Movements can be done like:
