@@ -212,9 +212,9 @@ void Chassis::motion_handler(const std::vector<Pose>& target, const Options& opt
     }
 }
 
-void Chassis::move(const Pose& target, const Options& options, const Options& override) {
+void Chassis::move(const Pose& target, const Options& options, const Options& overwrite) {
     // merge options
-    Options combined_options = options << override;
+    Options combined_options = options << overwrite;
 
     // configure target
     Pose target_pose = target;
@@ -227,9 +227,9 @@ void Chassis::move(const Pose& target, const Options& options, const Options& ov
     motion_handler({target_pose}, combined_options, MOVE);
 }
 
-void Chassis::turn(const Point& target, const Options& options, const Options& override) {
+void Chassis::turn(const Point& target, const Options& options, const Options& overwrite) {
     // merge options
-    Options combined_options = options << override;
+    Options combined_options = options << overwrite;
 
     // configure target
     Pose target_pose;
@@ -241,9 +241,9 @@ void Chassis::turn(const Point& target, const Options& options, const Options& o
 }
 
 void Chassis::follow(const std::vector<Point>& path, const Options& options,
-                     const Options& override) {
+                     const Options& overwrite) {
     // merge options
-    Options combined_options = options << override;
+    Options combined_options = options << overwrite;
 
     bool relative = combined_options.relative.value();
     combined_options.relative = false;

@@ -73,10 +73,10 @@ class Chassis {
     void task();
     void wait();
 
-    void move(const Pose& target, const Options& options = {}, const Options& override = {});
+    void move(const Pose& target, const Options& options = {}, const Options& overwrite = {});
     void follow(const std::vector<Point>& path, const Options& options = {},
-                const Options& override = {});
-    void turn(const Point& target, const Options& options = {}, const Options& override = {});
+                const Options& overwrite = {});
+    void turn(const Point& target, const Options& options = {}, const Options& overwrite = {});
 
     void tank(double left_speed, double right_speed);
     void tank(const Point& speeds);
