@@ -74,13 +74,13 @@ void Odom::start() {
     odom_task = new pros::Task([this] { task(); }, 16, TASK_STACK_DEPTH_DEFAULT, "odom_task");
 }
 
-Pose Odom::get() {
+Pose Odom::get() const {
     std::lock_guard<pros::Mutex> lock(odom_mutex);
     // translate the tracker offsets to the global frame
     return odom_pose + tracker_linear_offset.rotate(odom_pose.theta);
 }
 
-Pose Odom::get_local() {
+Pose Odom::get_local() const {
     std::lock_guard<pros::Mutex> lock(odom_mutex);
     return odom_pose;
 }
