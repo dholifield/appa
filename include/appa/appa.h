@@ -17,7 +17,7 @@ class Odom {
     pros::Task* odom_task = nullptr;
 
     Tracker tracker;
-    double tpu;
+    double angular_offset = 0.0;
 
     Point tracker_linear_offset;
     double tracker_angular_offset;

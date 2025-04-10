@@ -174,14 +174,6 @@ Pose Tracker::get() {
     return Pose();
 }
 
-void Tracker::set_angle(double angle) {
-    if (type == Type::TWO_WHEEL_IMU) {
-        imu.set(angle);
-    } else if (type == Type::THREE_WHEEL) {
-        angle_offset = angle - get().theta;
-    }
-}
-
 /* ExitSpeed */
 bool ExitSpeed::check(Pose dp, int dt) {
     if (settle == 0) return false;

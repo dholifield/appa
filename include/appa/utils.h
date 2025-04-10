@@ -108,7 +108,6 @@ struct Tracker {
     Tracker(Encoder lx_encoder, Encoder rx_encoder, Encoder y_encoder, double tpu, double width);
 
     Pose get();
-    void set_angle(double angle);
 };
 
 /* Options and Parameters */

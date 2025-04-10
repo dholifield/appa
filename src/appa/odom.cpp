@@ -42,7 +42,7 @@ void Odom::task() {
         // update tracker pose
         odom_mutex.take();
         odom_pose += dtrack;
-        odom_pose.theta = track.theta;
+        odom_pose.theta = track.theta + angular_offset;
         odom_mutex.give();
 
         // debugging
@@ -97,7 +97,7 @@ void Odom::set_local(Pose pose) {
     if (std::isnan(pose.x)) pose.x = odom_pose.x;
     if (std::isnan(pose.y)) pose.y = odom_pose.y;
     if (std::isnan(pose.theta)) pose.theta = odom_pose.theta;
-    tracker.set_angle(pose.theta);
+    else angular_offset = pose.theta - odom_pose.theta;
     odom_pose = pose;
 }
 
@@ -113,7 +113,7 @@ void Odom::set_y(double y) {
 
 void Odom::set_theta(double theta) {
     std::lock_guard<pros::Mutex> lock(odom_mutex);
-    tracker.set_angle(theta);
+    angular_offset = theta - odom_pose.theta;
     odom_pose.theta = theta;
 }
 
