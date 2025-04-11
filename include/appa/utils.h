@@ -1,6 +1,8 @@
 #pragma once
 
-#include "appa.h"
+#include "api.h"
+#include <functional>
+#include <optional>
 
 namespace appa {
 
@@ -100,27 +102,10 @@ struct Tracker {
     virtual bool init() = 0;
 };
 
-// Two Wheeled with IMU
-struct TwoWheelIMU : public Tracker {
-    Encoder x_encoder, y_encoder;
-    Imu imu;
-    double tpu;
-
-    TwoWheelIMU(Encoder x_encoder, Encoder y_encoder, Imu imu_port, double tpu);
-
-    Pose get() override;
-    bool init() override;
-};
-
-// Three Wheeled
-struct ThreeWheel : public Tracker {
-    Encoder rx_encoder, lx_encoder, y_encoder;
-    double tpu, width;
-
-    ThreeWheel(Encoder lx_encoder, Encoder rx_encoder, Encoder y_encoder, double tpu, double width);
-
-    Pose get() override;
-    bool init() override { return true; };
+/* Localization */
+class Localization {
+  public:
+    virtual Pose get() const = 0;
 };
 
 /* Options and Parameters */

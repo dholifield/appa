@@ -27,7 +27,7 @@ appa::Config config(100,              // speed (%)
 
 appa::Chassis bot({-10, -9, 8, 3, -1},    // left motors
                   {17, 19, -18, -12, 11}, // right motors
-                  odom,                   // odom
+                  odom,                   // localization
                   config);                // configuration
 
 void initialize() {

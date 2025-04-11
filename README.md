@@ -25,12 +25,12 @@ The intent of this library it to make chassis movement both intuitive to use and
 This library is comprised of two main components: odometry for position tracking and a chassis for robot movement.
 
 ## Odometry
-[Odometry](http://thepilons.ca/wp-content/uploads/2018/10/Tracking.pdf) is used for keeping track of the robots position at all times. The two supported configurations are: two tracker wheels, one in the x and one in the y direction, in combination with an IMU; and three tracker wheels, two parallel in the x direction and one in the y direction. Here is how to create an instance of odom:
+[Odometry](http://thepilons.ca/wp-content/uploads/2018/10/Tracking.pdf) is used for keeping track of the robot's position at all times. The two supported configurations are `TwoWheelIMU` and `ThreeWheel`. `TwoWheelIMU` uses two tracker wheels, one in the x and one in the y direction, in combination with an IMU. `ThreeWheel` uses three tracker wheels, two parallel in the x direction and one in the y direction. If you'd like to create your own tracking configuration or even a different method of localization, refer to [Customization](#customization). Here is how to create an instance of odom:
 ```cpp
-appa::Tracker tracker({2, 3},  // x encoder
-                      {2, 1},  // y encoder
-                      {13, 5}, // imus
-                      321.5);  // tpu (ticks per inch)
+appa::TwoWheelIMU tracker({2, 3},  // x encoder
+                          {2, 1},  // y encoder
+                          {13, 5}, // imus
+                          321.5);  // tpu (ticks per inch)
 
 appa::Odom odom(tracker, // tracker
                 {2, 0},  // linear offset (inches)
@@ -84,7 +84,7 @@ appa::Config config(100,              // speed (%)
 
 appa::Chassis bot({-10, -9, 8, 3, -1},    // left motors
                   {17, 19, -18, -12, 11}, // right motors
-                  odom,                   // odom
+                  odom,                   // localization
                   config);                // configuration
 ```
 - Config is used to set all the required and default movement parameters. These are explained in more detail below.
@@ -140,7 +140,7 @@ They can be set by simply putting the variable name and value in brackets like `
 | `std::function<bool()> exit_fn` | X   |   X  |   X  |   X  | -->
 
 ### Movements
-Currently, there are 3 different motion commands: `move(target, options, overwrite)`, `turn(target, options, overwrite)`, and `follow(path, options, overwrite)`. This makes it very easy to control the chassis. `move` targets can be a single number for a relative straight movement, a point to drive to, or a target pose which uses the boomerang controller. `turn` targets can be a single number for a target heading, or a point to face towards. `follow` targets must be a vector of points. Options will be set as `options << overwrite` for the purpose of allowing the user to use a set of predefined options, and also manually set others for a specific movement. The movement parameters will automatically default to configurations or default options for those not specified. Movements can be done like:
+Currently, there are 3 different motion commands: `move(target, options, overwrite)`, `turn(target, options, overwrite)`, and `follow(path, options, overwrite)`. This makes it very easy to control the chassis. `move` targets can be a single number for a relative straight movement, a point to drive to, or a target pose which uses the boomerang controller. `turn` targets can be a single number for a target heading, or a point to face towards. `follow` targets must be a vector of points. Options will be set as `options << overwrite` for the purpose of allowing the user to use a set of predefined options, and also manually set others for a specific movement. The movement parameters will automatically default to the configuration for those not specified. Movements can be done like:
 
 ```cpp
 std::vector<appa::Point> path1 = {{24, 0}, {24, 24}, {0, 24}, {0, 0}}; // path with 4 points
@@ -162,7 +162,7 @@ appa::Options fast = {.speed = 100, .accel = 500};
 appa::Options precise = {.speed = 50, .accel = 50, .lin_PID = appa::Gains{5, 0, 1}};
 appa::Options goal_grab = {.exit_fn = [] { return claw.has_goal(); }};
 
-bot.move({24, 12});                            // move with default options
+bot.move({24, 12});                            // move with default parameters
 bot.move({50, 10}, fast << thru);              // move with thru and fast options
 bot.move({60, 0}, fast << goal_grab);          // move fast and exit when claw has goal
 bot.move({10, 0, 90}, precise, {.lead = 0.7}); // move with precise options plus different lead
@@ -188,6 +188,7 @@ Please go through the headers files in `include/appa/` to see all available func
 bot.wait();                           // wait for async movement to stop
 bot.set_brake_mode(MOTOR_BRAKE_HOLD); // set the brake mode
 bot.stop();                           // stop moving
+bot.debug = true;                     // print useful chassis information
 ```
 
 ### Coordinate System:
@@ -200,24 +201,25 @@ Although using one of the two supported odometry tracking configurations is reco
 When creating a `Chassis`, it takes in a `Localization` object and uses only the `Pose get();` function to retreive the current position. If you want to implement your own localization system, simply create a subclass derived from the `Localization` class and override the `get()` function like this:
 ```cpp
 class YourLocalization : public appa::Localization {
+  public:
     appa::Pose get() const override {
         // your implementation
         return appa::Pose(x, y, theta);
     }
-}
+};
 ```
 
 ## Custom Odometry Tracking Configuration
-Implementing your own odometry tracking configuration can be done in a similar way using the `Tracker` object as a parent. Configure the `get();` function to return a `Pose` and `init();` to return a boolean that the initialization was successful. Here is how to do this:
+Implementing your own odometry tracking configuration can be done in a similar way using the `Tracker` object as a parent. Configure the `get();` function to return a `Pose` containing the change in x, change in y, and the heading, and `init();` to return a boolean that the initialization was successful. Here is how to do this:
 ```cpp
-class YourTracker : public appa::Tracker {
+struct YourTracker : public appa::Tracker {
     appa::Pose get() override {
         // your implementation
-        return appa::Pose(x, y, theta);
+        return appa::Pose(dx, dy, theta);
     }
     bool init() override {
         // your implementation
         return successful;
     }
-}
+};
 ```

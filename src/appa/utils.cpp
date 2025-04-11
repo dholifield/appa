@@ -137,40 +137,6 @@ Encoder::Encoder(uint8_t expander, int8_t port)
     : enc({expander, abs(port), abs(port) + 1}, port < 0) {}
 double Encoder::get_value() { return enc.get_value(); }
 
-/* Tracker */
-TwoWheelIMU::TwoWheelIMU(Encoder x_encoder, Encoder y_encoder, Imu imu_port, double tpu)
-    : imu(std::move(imu_port)),
-      tpu(tpu),
-      x_encoder(std::move(x_encoder)),
-      y_encoder(std::move(y_encoder)) {}
-Pose TwoWheelIMU::get() {
-    double x = x_encoder.get_value() * tpu;
-    double y = y_encoder.get_value() * tpu;
-    double theta = to_rad(imu.get());
-    return Pose(x, y, theta);
-}
-bool TwoWheelIMU::init() {
-    if (!imu.calibrate()) return false;
-    imu.set(0.0);
-    return true;
-}
-
-ThreeWheel::ThreeWheel(Encoder lx_encoder, Encoder rx_encoder, Encoder y_encoder, double tpu,
-                       double width)
-    : tpu(tpu),
-      width(width),
-      lx_encoder(std::move(lx_encoder)),
-      rx_encoder(std::move(rx_encoder)),
-      y_encoder(std::move(y_encoder)) {}
-Pose ThreeWheel::get() {
-    double l = lx_encoder.get_value() * tpu;
-    double r = rx_encoder.get_value() * tpu;
-    double y = y_encoder.get_value() * tpu;
-    double theta = (r - l) / width;
-    double x = (r + l) / 2;
-    return Pose(x, y, theta);
-}
-
 /* ExitSpeed */
 bool ExitSpeed::check(Pose dp, int dt) {
     if (settle == 0) return false;
