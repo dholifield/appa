@@ -132,17 +132,20 @@ void Imu::set(double angle) {
 }
 
 /* Encoder */
-Encoder::Encoder(int8_t port) : enc(abs(port), abs(port) + 1, port < 0) {}
-Encoder::Encoder(uint8_t expander, int8_t port)
-    : enc({expander, abs(port), abs(port) + 1}, port < 0) {}
-double Encoder::get_value() { return enc.get_value(); }
+EncoderWheel::EncoderWheel(int8_t port, double tpu)
+    : enc(abs(port), abs(port) + 1, port < 0), tpu(tpu) {}
+EncoderWheel::EncoderWheel(uint8_t expander, int8_t port, double tpu)
+    : enc({expander, abs(port), abs(port) + 1}, port < 0), tpu(tpu) {}
+double EncoderWheel::get_value() { return enc.get_value() / tpu; }
 
 /* ExitSpeed */
+ExitSpeed::ExitSpeed(double linear, double angular, int settle)
+    : linear(linear), angular(to_rad(angular)), settle(settle) {}
 bool ExitSpeed::check(Pose dp, int dt) {
     if (settle == 0) return false;
     double d_d = dp.x * dp.x + dp.y * dp.y;
     double d_a = fabs(dp.theta);
-    if (d_d < linear * linear && d_a < to_rad(angular)) timer += dt;
+    if (d_d < linear * linear && d_a < angular) timer += dt;
     else timer = 0;
     if (timer > settle) {
         timer = 0;

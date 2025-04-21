@@ -24,13 +24,14 @@ The intent of this library it to make chassis movement both intuitive to use and
 # Usage
 This library is comprised of two main components: odometry for position tracking and a chassis for robot movement.
 
+> Note: You can use any units for distance, as long as you are consistent. Units for angles are in degrees.
+
 ## Odometry
 [Odometry](http://thepilons.ca/wp-content/uploads/2018/10/Tracking.pdf) is used for keeping track of the robot's position at all times. The two supported configurations are `TwoWheelIMU` and `ThreeWheel`. `TwoWheelIMU` uses two tracker wheels, one in the x and one in the y direction, in combination with an IMU. `ThreeWheel` uses three tracker wheels, two parallel in the x direction and one in the y direction. If you'd like to create your own tracking configuration or even a different method of localization, refer to [Customization](#customization). Here is how to create an instance of odom:
 ```cpp
-appa::TwoWheelIMU tracker({2, 3},  // x encoder
-                          {2, 1},  // y encoder
-                          {13, 5}, // imus
-                          321.5);  // tpu (ticks per inch)
+appa::TwoWheelIMU tracker({2, 3, 321.5}, // x encoder wheel
+                          {2, 1, 321.5}, // y encoder wheel
+                          {13, 5});      // imus
 
 appa::Odom odom(tracker, // tracker
                 {2, 0},  // linear offset (inches)
@@ -61,7 +62,7 @@ Pose p = odom.get();
 // set the tracking offset (e.g. if COG changes)
 // note: this doesn't change tracking, just the .get() function (used in movements)
 odom.set_offset({5, 0});
-// print useful odometry information to the terminal
+// start printing useful odometry information to the terminal
 odom.debug = true;
 ```
 
@@ -107,12 +108,12 @@ They can be set by simply putting the variable name and value in brackets like `
 | `Gains lin_PID` | PID gains for linear movement | `config.lin_PID` | - |
 | `Gains ang_PID` | PID gains for angular movement and turns | `config.ang_PID` | - |
 | `double lead` | The lead percentage for boomerang movements | `config.lead` | Decimal % of distance to target |
-| `double lookahead` | The lookahead distance for pure pursuit movements | `config.lookahead` | Linear units |
-| `double offset` | The offset distance from a move target | `0` | Linear units |
-| `double lin_exit` | The maximum linear error to be considered at target | `config.lin_exit` | Linear units |
+| `double lookahead` | The lookahead distance for pure pursuit movements | `config.lookahead` | Distance units |
+| `double offset` | The offset distance from a move target | `0` | Distance units |
+| `double lin_exit` | The maximum linear error to be considered at target | `config.lin_exit` | Distance units |
 | `double ang_exit` | The maximum angular error to be considered at target | `config.ang_exit` | Degrees |
-| `double ang_dz` | The minimum linear error to enable the angular component | `config.ang_dz` | Linear units |
-| `ExitSpeed exit_speed` | The minimum speeds to exit a movement | `config.exit_speed` | Linear/Degrees/ms |
+| `double ang_dz` | The minimum linear error to enable the angular component | `config.ang_dz` | Distance units |
+| `ExitSpeed exit_speed` | The minimum speeds to exit a movement | `config.exit_speed` | Distance/Degrees/ms |
 | `int settle` | The time for a movement to stay in target to be considered completed | `0` | Milliseconds |
 | `int timeout` | The maximum allowed time for a movement | `0` or ignore timeout | Milliseconds |
 | `function<bool()> exit_fn` | custom exit with lambda function | `nullptr` | - |

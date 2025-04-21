@@ -1,12 +1,10 @@
 #include "main.h"
-#include "appa/utils.h"
 
 pros::Controller master(CONTROLLER_MASTER);
 
-appa::TwoWheelIMU tracker({2, 3},  // x encoder
-                          {2, 1},  // y encoder
-                          {13, 5}, // imus
-                          321.5);  // tpu (ticks per inch)
+appa::TwoWheelIMU tracker({2, 3, 321.5}, // x encoder wheel
+                          {2, 1, 321.5}, // y encoder wheel
+                          {13, 5});      // imus
 
 appa::Odom odom(tracker, // tracker
                 {2, 0},  // linear offset (inches)

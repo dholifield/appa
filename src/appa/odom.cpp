@@ -127,15 +127,12 @@ void Odom::set_offset(Point linear) {
 
 /* Tracker */
 // Two Wheels + IMU
-TwoWheelIMU::TwoWheelIMU(Encoder x_encoder, Encoder y_encoder, Imu imu_port, double tpu)
-    : imu(std::move(imu_port)),
-      tpu(tpu),
-      x_encoder(std::move(x_encoder)),
-      y_encoder(std::move(y_encoder)) {}
+TwoWheelIMU::TwoWheelIMU(EncoderWheel x_encoder, EncoderWheel y_encoder, Imu imu_port)
+    : imu(std::move(imu_port)), x_encoder(std::move(x_encoder)), y_encoder(std::move(y_encoder)) {}
 
 Pose TwoWheelIMU::get() {
-    double x = x_encoder.get_value() * tpu;
-    double y = y_encoder.get_value() * tpu;
+    double x = x_encoder.get_value();
+    double y = y_encoder.get_value();
     double theta = to_rad(imu.get());
     return Pose(x, y, theta);
 }
@@ -147,18 +144,17 @@ bool TwoWheelIMU::init() {
 }
 
 // Three Wheels
-ThreeWheel::ThreeWheel(Encoder lx_encoder, Encoder rx_encoder, Encoder y_encoder, double tpu,
+ThreeWheel::ThreeWheel(EncoderWheel lx_encoder, EncoderWheel rx_encoder, EncoderWheel y_encoder,
                        double width)
-    : tpu(tpu),
-      width(width),
+    : width(width),
       lx_encoder(std::move(lx_encoder)),
       rx_encoder(std::move(rx_encoder)),
       y_encoder(std::move(y_encoder)) {}
 
 Pose ThreeWheel::get() {
-    double l = lx_encoder.get_value() * tpu;
-    double r = rx_encoder.get_value() * tpu;
-    double y = y_encoder.get_value() * tpu;
+    double l = lx_encoder.get_value();
+    double r = rx_encoder.get_value();
+    double y = y_encoder.get_value();
     double theta = (r - l) / width;
     double x = (r + l) / 2;
     return Pose(x, y, theta);

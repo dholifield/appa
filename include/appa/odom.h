@@ -44,11 +44,10 @@ class Odom : public Localization {
 
 // Two Wheels + IMU
 struct TwoWheelIMU : public Tracker {
-    Encoder x_encoder, y_encoder;
+    EncoderWheel x_encoder, y_encoder;
     Imu imu;
-    double tpu;
 
-    TwoWheelIMU(Encoder x_encoder, Encoder y_encoder, Imu imu_port, double tpu);
+    TwoWheelIMU(EncoderWheel x_encoder, EncoderWheel y_encoder, Imu imu_port);
 
     Pose get() override;
     bool init() override;
@@ -56,10 +55,11 @@ struct TwoWheelIMU : public Tracker {
 
 // Three Wheels
 struct ThreeWheel : public Tracker {
-    Encoder rx_encoder, lx_encoder, y_encoder;
-    double tpu, width;
+    EncoderWheel lx_encoder, rx_encoder, y_encoder;
+    double width;
 
-    ThreeWheel(Encoder lx_encoder, Encoder rx_encoder, Encoder y_encoder, double tpu, double width);
+    ThreeWheel(EncoderWheel lx_encoder, EncoderWheel rx_encoder, EncoderWheel y_encoder,
+               double width);
 
     Pose get() override;
     bool init() override { return true; }

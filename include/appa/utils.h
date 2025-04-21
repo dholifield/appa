@@ -87,11 +87,12 @@ struct Imu {
 };
 
 /* Encoder */
-struct Encoder {
+struct EncoderWheel {
     pros::adi::Encoder enc;
+    double tpu;
 
-    Encoder(int8_t port);
-    Encoder(uint8_t expander, int8_t port);
+    EncoderWheel(int8_t port, double tpu);
+    EncoderWheel(uint8_t expander, int8_t port, double tpu);
 
     double get_value();
 };
@@ -121,8 +122,7 @@ struct ExitSpeed {
     double linear, angular;
     int settle;
 
-    ExitSpeed(double linear = 0.0, double angular = 0.0, int settle = 0)
-        : linear(linear), angular(angular), settle(settle) {}
+    ExitSpeed(double linear = 0.0, double angular = 0.0, int settle = 0);
     bool check(Pose dp, int dt);
 
   private:
