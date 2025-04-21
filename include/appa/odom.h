@@ -28,6 +28,7 @@ class Odom : public Localization {
 
     void task();
     void start();
+    void stop();
 
     Pose get() const override;
     Pose get_local() const;

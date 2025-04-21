@@ -1,3 +1,4 @@
+#include "odom.h"
 #include "appa.h"
 
 namespace appa {
@@ -17,7 +18,7 @@ Odom::~Odom() {
 }
 void Odom::task() {
     printf("odom task started\n");
-    Pose prev_track = {0.0, 0.0, 0.0};
+    Pose prev_track = tracker.get();
     uint32_t now = pros::millis();
 
     int count = 0;
@@ -72,6 +73,15 @@ void Odom::start() {
         delete odom_task;
     }
     odom_task = new pros::Task([this] { task(); }, 16, TASK_STACK_DEPTH_DEFAULT, "odom_task");
+}
+
+void Odom::stop() {
+    if (odom_task) {
+        odom_task->remove();
+        delete odom_task;
+        odom_task = nullptr;
+    }
+    odom_mutex.give();
 }
 
 Pose Odom::get() const {
