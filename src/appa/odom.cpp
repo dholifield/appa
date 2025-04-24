@@ -22,8 +22,9 @@ void Odom::task() {
     uint32_t now = pros::millis();
 
     int count = 0;
+    running.store(true);
 
-    while (true) {
+    while (running.load()) {
         // get current sensor values
         Pose track = tracker.get();
 
@@ -68,20 +69,15 @@ void Odom::start() {
     printf("done\n");
 
     set({0.0, 0.0, 0.0});
-    if (odom_task) {
-        odom_task->remove();
-        delete odom_task;
-    }
+    if (running.load()) stop();
     odom_task = new pros::Task([this] { task(); }, 16, TASK_STACK_DEPTH_DEFAULT, "odom_task");
 }
 
 void Odom::stop() {
-    if (odom_task) {
-        odom_task->remove();
-        delete odom_task;
-        odom_task = nullptr;
-    }
-    odom_mutex.give();
+    running.store(false);
+    odom_task->join();
+    delete odom_task;
+    odom_task = nullptr;
 }
 
 Pose Odom::get() const {

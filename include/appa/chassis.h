@@ -18,7 +18,7 @@ class Chassis {
 
     pros::Task* chassis_task = nullptr;
     pros::Mutex chassis_mutex;
-    std::atomic<bool> is_running{false};
+    std::atomic<bool> running{false};
 
     enum Motion { MOVE, PATH, TURN };
 
@@ -47,7 +47,7 @@ class Chassis {
     void tank(pros::Controller& controller);
     void arcade(double linear, double angular);
     void arcade(pros::Controller& controller);
-    void stop(bool stop_task = true);
+    void stop();
 
     void set_brake_mode(pros::motor_brake_mode_e mode);
 };

@@ -12,6 +12,7 @@ class Odom : public Localization {
   private:
     Pose odom_pose = {0.0, 0.0, 0.0};
     mutable pros::Mutex odom_mutex;
+    std::atomic<bool> running{false};
     pros::Task* odom_task = nullptr;
 
     Tracker& tracker;

@@ -186,9 +186,9 @@ void opcontrol() {
 Please go through the headers files in `include/appa/` to see all available functions. Other useful chassis commands include:
 
 ```cpp
-bot.wait();                           // wait for async movement to stop
+bot.wait();                           // wait for movement to finish
 bot.set_brake_mode(MOTOR_BRAKE_HOLD); // set the brake mode
-bot.stop();                           // stop moving
+bot.stop();                           // stop movement
 bot.debug = true;                     // print useful chassis information
 ```
 

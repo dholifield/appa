@@ -8,7 +8,7 @@ Chassis::Chassis(const std::initializer_list<int8_t>& left_motors,
                  const Config& config)
     : left_motors(left_motors), right_motors(right_motors), loc(loc), df_params(config) {}
 
-Chassis::~Chassis() { stop(true); }
+Chassis::~Chassis() { stop(); }
 
 void Chassis::wait() {
     if (chassis_task) {
@@ -45,13 +45,13 @@ void Chassis::motion_task(Pose target, const Parameters prm, const Motion motion
     uint32_t start_time, now;
     start_time = now = pros::millis();
     int settle_timer = 0;
-    bool running = true;
+    bool exit = false;
     bool settling = false;
 
     int counter = 0;
 
     // control loop
-    while (running && is_running.load()) {
+    while (!exit && running.load()) {
         // find error and direction based on motion type
         pose = loc.get();
         switch (motion) {
@@ -84,7 +84,7 @@ void Chassis::motion_task(Pose target, const Parameters prm, const Motion motion
             // error
             carrot = (target.p() - pose.p()).rotate(-target.theta);
             double dist = carrot.x + prm.lookahead - fabs(carrot.y) / 2; // circle approximation
-            if (dist > 0) running = false; // exit when carrot reaches waypoint
+            if (dist > 0) exit = true; // exit when carrot reaches waypoint
             carrot = target.project(dist);
             error = {pose.dist(target) + path_length - prm.offset, pose.angle(carrot)};
             // direction
@@ -106,7 +106,7 @@ void Chassis::motion_task(Pose target, const Parameters prm, const Motion motion
             else if (prm.turn == CCW && error.angular > 0) error.angular -= 2 * M_PI;
             break;
         default:
-            running = false;
+            running.store(false);
             continue;
         }
 
@@ -143,24 +143,25 @@ void Chassis::motion_task(Pose target, const Parameters prm, const Motion motion
 
         // exit conditions
         //   timeout
-        if (prm.timeout > 0 && pros::millis() - start_time > prm.timeout) running = false;
+        if (prm.timeout > 0 && pros::millis() - start_time > prm.timeout) exit = true;
         //   exit error
         settling = (fabs(error.linear) < prm.lin_exit); // will always be true for turns
         if (is_pose || motion == TURN) settling *= fabs(error.angular) < to_rad(prm.ang_exit);
         //   settling
         if (settling) {
             settle_timer += dt;
-            if (settle_timer > prm.settle) running = false;
+            if (settle_timer > prm.settle) exit = true;
         } else settle_timer = 0;
         //   minimum speed
-        if (exit_speed.check(pose - prev_pose, dt)) running = false;
+        if (exit_speed.check(pose - prev_pose, dt)) exit = true;
         prev_pose = pose;
         //   custom lambda
-        if (prm.exit_fn && prm.exit_fn()) is_running.store(false);
+        if (prm.exit_fn && prm.exit_fn()) running.store(false);
 
         // delay task
         pros::c::task_delay_until(&now, dt);
 
+        // debug
         if (!(++counter % 10) && debug.load()) {
             printf("lin: %.2f, ang: %.2f, left: %.2f, right: %.2f\n",
                    error.linear,
@@ -170,7 +171,7 @@ void Chassis::motion_task(Pose target, const Parameters prm, const Motion motion
             counter = 0;
         }
     }
-    if (!prm.thru && !(motion == PATH)) stop(false);
+    if (!running.load() || (!prm.thru && !(motion == PATH))) tank(0, 0);
 }
 
 void Chassis::motion_handler(const std::vector<Pose>& target, const Options& options,
@@ -188,19 +189,19 @@ void Chassis::motion_handler(const std::vector<Pose>& target, const Options& opt
     std::function<void()> movement;
     if (motion == PATH) {
         movement = [this, path = target, params] {
-            is_running.store(true);
-            for (int i = 0; i < path.size() - 1 && is_running.load(); ++i) {
+            running.store(true);
+            for (int i = 0; i < path.size() - 1 && running.load(); ++i) {
                 motion_task(path[i], params, PATH);
                 path_length -= path[i].dist(path[i + 1]);
             }
             motion_task(path[path.size() - 1], params, MOVE);
-            is_running.store(false);
+            running.store(false);
         };
     } else {
         movement = [this, target, params, motion] {
-            is_running.store(true);
+            running.store(true);
             motion_task(target[0], params, motion);
-            is_running.store(false);
+            running.store(false);
         };
     }
 
@@ -287,13 +288,11 @@ void Chassis::arcade(pros::Controller& controller) {
     arcade(linear, angular);
 }
 
-void Chassis::stop(bool stop_task) {
-    is_running.store(false);
-    if (stop_task && chassis_task) {
-        chassis_task->remove();
-        delete chassis_task;
-        chassis_task = nullptr;
-    }
+void Chassis::stop() {
+    running.store(false);
+    chassis_task->join();
+    delete chassis_task;
+    chassis_task = nullptr;
     tank(0, 0);
 }
 
