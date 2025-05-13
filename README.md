@@ -44,10 +44,11 @@ appa::Odom odom(tracker, // tracker
 - The linear offset is `{x, y}` how much to offset your tracking center, e.g. if you want it to be at your center of mass.
 - The angular offset can be used for [angled tracker wheel](https://youtu.be/TqMNuXfKgMc?si=iwc8nQkSW-A0ZFeG&t=36) configurations, as long as the wheels are perpendicular.
 
-To start odometry, simply call `odom.start()`, usually during initialization.
+To start odometry, simply call `odom.start()`, usually during initialization. Some trackers require initialization such as calibrating the IMU which should be done before starting odometry.
 
 ```cpp
 void initialize() {
+    tracker.calibrate();
     odom.start();
 }
 ```
@@ -168,6 +169,20 @@ bot.move({50, 10}, fast << thru);              // move with thru and fast option
 bot.move({60, 0}, fast << goal_grab);          // move fast and exit when claw has goal
 bot.move({10, 0, 90}, precise, {.lead = 0.7}); // move with precise options plus different lead
 bot.turn(90, fast);                            // turn with fast options
+```
+
+All `Target` objects also have options tied to them. This makes it easy to share specific options with similar targets such as goals.
+
+```cpp
+// goal center is 10 units away from tracking center and bot should drive forward into it
+const appa::Options goal_opts{.dir = FORWARD, .offset = 10};
+const appa::Target goal_1{24, 72, goal_opts};
+const appa::Target goal_2{48, 72, goal_opts};
+
+claw.open();
+bot.move(goal_1, {.speed = 100, .lin_exit = 5});
+claw.close();
+bot.move(goal_1, {.speed = 100});
 ```
 
 For operator control, tank and arcade controls exist. You can pass in the controller for ease of use, or simply use numbers for custom curves.

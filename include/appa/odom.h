@@ -21,13 +21,14 @@ class Odom : public Localization {
     Point tracker_linear_offset;
     double tracker_angular_offset;
 
+    void task();
+
   public:
     std::atomic<bool> debug{false};
 
     Odom(Tracker& tracker, Point tracker_linear_offset, double tracker_angular_offset);
     ~Odom();
 
-    void task();
     void start();
     void stop();
 
@@ -52,7 +53,7 @@ struct TwoWheelIMU : public Tracker {
     TwoWheelIMU(EncoderWheel x_encoder, EncoderWheel y_encoder, Imu imu_port);
 
     Pose get() override;
-    bool init() override;
+    void calibrate();
 };
 
 // Three Wheels
@@ -64,7 +65,6 @@ struct ThreeWheel : public Tracker {
                double width);
 
     Pose get() override;
-    bool init() override { return true; }
 };
 
 } // namespace appa

@@ -30,6 +30,7 @@ appa::Chassis bot({-10, -9, 8, 3, -1},    // left motors
 
 void initialize() {
     // start odometry
+    tracker.calibrate();
     odom.start();
     // odom.debug = true;
     // bot.debug = true;
@@ -39,9 +40,20 @@ void disabled() {}
 
 void competition_initialize() {}
 
+const appa::Options goal_opts{.dir = FORWARD, .offset = 10};
+const appa::Target goal_1{24, 72, goal_opts};
+const appa::Target goal_2{48, 72, goal_opts};
+
 void autonomous() {
     printf("autonomous started\n");
     // odom.set(0, 0, 0);
+
+    // claw.open();
+    bot.move(goal_1, {.speed = 100, .lin_exit = 10});
+    // claw.close();
+    bot.move(goal_1, {.speed = 100});
+
+    bot.turn(180, {.turn = CCW, .relative = true});
 
     bot.move({24, 24}, {.speed = 50});
     master.rumble("-");

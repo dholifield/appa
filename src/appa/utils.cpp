@@ -184,6 +184,14 @@ Options Options::operator>>(const Options& other) const { return other << *this;
 void Options::operator<<=(const Options& other) { *this = *this << other; }
 void Options::operator>>=(const Options& other) { *this = *this >> other; }
 
+/* Target */
+Target::Target(double theta, Options options) : pose(theta), options(options) {};
+Target::Target(double x, double y, Options options) : pose(x, y), options(options) {};
+Target::Target(double x, double y, double theta, Options options)
+    : pose(x, y, theta), options(options) {};
+Target::Target(const Pose& pose, Options options) : pose(pose), options(options) {};
+Target::Target(const Point& point, Options options) : pose(point), options(options) {};
+
 /* Parameters */
 Parameters::Parameters(const Config& config) {
     dir = AUTO;

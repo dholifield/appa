@@ -36,7 +36,7 @@ struct Pose {
     double x, y, theta;
 
     Pose(double x = NAN, double y = NAN, double theta = NAN) : x(x), y(y), theta(theta) {}
-    Pose(const Point& p, double theta) : x(p.x), y(p.y), theta(theta) {}
+    Pose(const Point& p, double theta = NAN) : x(p.x), y(p.y), theta(theta) {}
 
     operator Point() const;
     Point p() const;
@@ -100,7 +100,6 @@ struct EncoderWheel {
 /* Trackers */
 struct Tracker {
     virtual Pose get() = 0;
-    virtual bool init() = 0;
 };
 
 /* Localization */
@@ -113,7 +112,7 @@ class Localization {
 enum Direction { AUTO, FORWARD, REVERSE, CCW, CW };
 
 #define AUTO appa::AUTO
-#define FORWARDS appa::FORWARD
+#define FORWARD appa::FORWARD
 #define REVERSE appa::REVERSE
 #define CCW appa::CCW
 #define CW appa::CW
@@ -161,6 +160,17 @@ struct Options {
     void operator>>=(const Options& other);
 };
 
+struct Target {
+    Pose pose;
+    Options options;
+
+    Target(double theta, Options options = {});
+    Target(double x, double y, Options options = {});
+    Target(double x, double y, double theta, Options options = {});
+    Target(const Pose& pose, Options options = {});
+    Target(const Point& point, Options options = {});
+};
+
 struct Config {
     double speed, accel;
     Gains linear_PID, angular_PID;
@@ -171,7 +181,7 @@ struct Config {
     int settle, timeout;
 };
 
-// Parameters                      // X = used, L = last point
+//                                 // X = used, L = last point
 struct Parameters {                // point  pose  path  turn
     Direction dir;                 //   X     X     X     X
     Direction turn;                //                     X

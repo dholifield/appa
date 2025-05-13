@@ -34,8 +34,8 @@ void Chassis::motion_task(Pose target, const Parameters prm, const Motion motion
     double lin_speed, ang_speed;
 
     // convert to radians
-    const bool is_pose = !std::isnan(target.theta);
-    if (is_pose) target.theta = to_rad(target.theta);
+    const bool has_theta = !std::isnan(target.theta);
+    if (has_theta) target.theta = to_rad(target.theta);
 
     // relative motion
     if (prm.relative)
@@ -58,7 +58,7 @@ void Chassis::motion_task(Pose target, const Parameters prm, const Motion motion
         case MOVE:
             // error
             error = {pose.dist(target), pose.angle(target)};
-            if (is_pose) { // move to pose
+            if (has_theta) { // move to pose
                 carrot = target.project(-error.linear * prm.lead);
                 error.angular = pose.angle(carrot);
             }
@@ -72,7 +72,7 @@ void Chassis::motion_task(Pose target, const Parameters prm, const Motion motion
             // different error scaling for small distances
             if (fabs(error.linear) < prm.ang_dz) {
                 // turn to target theta when close
-                if (is_pose) error.angular = std::remainder(target.theta - pose.theta, 2 * M_PI);
+                if (has_theta) error.angular = std::remainder(target.theta - pose.theta, 2 * M_PI);
                 // stop turning if no target theta
                 else error.angular = 0;
             } else if (fabs(error.linear) < 2 * prm.ang_dz)
@@ -96,10 +96,9 @@ void Chassis::motion_task(Pose target, const Parameters prm, const Motion motion
         }
         case TURN:
             // error
-            if (std::isnan(target.theta)) error = {0.0, pose.angle(target)}; // turn to point
-            else
-                error = {0.0,
-                         std::remainder(target.theta - pose.theta, 2 * M_PI)}; // turn to heading
+            if (has_theta) // turn to heading
+                error = {0.0, std::remainder(target.theta - pose.theta, 2 * M_PI)};
+            else error = {0.0, pose.angle(target)}; // turn to point
             // direction
             if (dir == REVERSE) error.angular += error.angular > 0 ? -M_PI : M_PI;
             if (prm.turn == CW && error.angular < 0) error.angular += 2 * M_PI;
@@ -146,7 +145,7 @@ void Chassis::motion_task(Pose target, const Parameters prm, const Motion motion
         if (prm.timeout > 0 && pros::millis() - start_time > prm.timeout) exit = true;
         //   exit error
         settling = (fabs(error.linear) < prm.lin_exit); // will always be true for turns
-        if (is_pose || motion == TURN) settling *= fabs(error.angular) < to_rad(prm.ang_exit);
+        if (has_theta || motion == TURN) settling *= fabs(error.angular) < to_rad(prm.ang_exit);
         //   settling
         if (settling) {
             settle_timer += dt;
@@ -213,12 +212,12 @@ void Chassis::motion_handler(const std::vector<Pose>& target, const Options& opt
     }
 }
 
-void Chassis::move(const Pose& target, const Options& options, const Options& overwrite) {
+void Chassis::move(const Target& target, const Options& options, const Options& overwrite) {
     // merge options
-    Options combined_options = options << overwrite;
+    Options combined_options = target.options << options << overwrite;
 
     // configure target
-    Pose target_pose = target;
+    Pose target_pose = target.pose;
     if (std::isnan(target_pose.y)) { // relative straight
         target_pose.y = 0.0;
         combined_options <<= {.dir = AUTO, .relative = true};
@@ -228,14 +227,14 @@ void Chassis::move(const Pose& target, const Options& options, const Options& ov
     motion_handler({target_pose}, combined_options, MOVE);
 }
 
-void Chassis::turn(const Point& target, const Options& options, const Options& overwrite) {
+void Chassis::turn(const Target& target, const Options& options, const Options& overwrite) {
     // merge options
-    Options combined_options = options << overwrite;
+    Options combined_options = target.options << options << overwrite;
 
     // configure target
     Pose target_pose;
-    if (std::isnan(target.y)) target_pose.theta = target.x;
-    else target_pose = target;
+    if (std::isnan(target.pose.y)) target_pose.theta = target.pose.x;
+    else target_pose = target.pose;
 
     // run motion
     motion_handler({target_pose}, combined_options, TURN);

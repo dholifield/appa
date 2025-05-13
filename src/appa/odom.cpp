@@ -1,4 +1,3 @@
-#include "odom.h"
 #include "appa.h"
 
 namespace appa {
@@ -16,6 +15,7 @@ Odom::~Odom() {
         odom_task = nullptr;
     }
 }
+
 void Odom::task() {
     printf("odom task started\n");
     Pose prev_track = tracker.get();
@@ -61,13 +61,6 @@ void Odom::task() {
 }
 
 void Odom::start() {
-    printf("calibrating tracker...");
-    if (!tracker.init()) {
-        printf("\nERROR: Tracker failed to initialize %d\nodometry was not started\n", errno);
-        return;
-    }
-    printf("done\n");
-
     set({0.0, 0.0, 0.0});
     if (running.load()) stop();
     odom_task = new pros::Task([this] { task(); }, 16, TASK_STACK_DEPTH_DEFAULT, "odom_task");
@@ -143,10 +136,14 @@ Pose TwoWheelIMU::get() {
     return Pose(x, y, theta);
 }
 
-bool TwoWheelIMU::init() {
-    if (!imu.calibrate()) return false;
+void TwoWheelIMU::calibrate() {
+    printf("calibrating tracker...");
+    if (!imu.calibrate()) {
+        printf("\nERROR: Tracker failed to initialize: %d\n", errno);
+        return;
+    }
     imu.set(0.0);
-    return true;
+    printf("done\n");
 }
 
 // Three Wheels
