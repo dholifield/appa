@@ -40,9 +40,9 @@ void disabled() {}
 
 void competition_initialize() {}
 
-const appa::Options goal_opts{.dir = FORWARD, .offset = 10};
-const appa::Target goal_1{24, 72, goal_opts};
-const appa::Target goal_2{48, 72, goal_opts};
+const appa::Options goal_opts = {.dir = FORWARD, .offset = 10};
+const appa::Target goal_1 = {24, 72, goal_opts};
+const appa::Target goal_2 = {48, 72, goal_opts};
 
 void autonomous() {
     printf("autonomous started\n");

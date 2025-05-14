@@ -56,15 +56,12 @@ void initialize() {
 Odometry will do its work in the background after you start it, and should be passed into a chassis to use it. Here are some useful commands:
 
 ```cpp
-// set the robot's pose
-odom.set(24, 12, 90);
-// get the robot's pose
-Pose p = odom.get();
 // set the tracking offset (e.g. if COG changes)
 // note: this doesn't change tracking, just the .get() function (used in movements)
 odom.set_offset({5, 0});
-// start printing useful odometry information to the terminal
-odom.debug = true;
+odom.set(24, 12, 90);      // set the robot's pose
+appa::Pose p = odom.get(); // get the robot's pose
+odom.debug = true;         // start printing useful odometry information to the terminal
 ```
 
 ## Chassis
@@ -142,7 +139,7 @@ They can be set by simply putting the variable name and value in brackets like `
 | `std::function<bool()> exit_fn` | X   |   X  |   X  |   X  | -->
 
 ### Movements
-Currently, there are 3 different motion commands: `move(target, options, overwrite)`, `turn(target, options, overwrite)`, and `follow(path, options, overwrite)`. This makes it very easy to control the chassis. `move` targets can be a single number for a relative straight movement, a point to drive to, or a target pose which uses the boomerang controller. `turn` targets can be a single number for a target heading, or a point to face towards. `follow` targets must be a vector of points. Options will be set as `options << overwrite` for the purpose of allowing the user to use a set of predefined options, and also manually set others for a specific movement. The movement parameters will automatically default to the configuration for those not specified. Movements can be done like:
+Currently, there are 3 different motion commands: `move(target, options, overwrite)`, `turn(target, options, overwrite)`, and `follow(path, options, overwrite)`. This makes it very easy to control the chassis. `move` and `turn` functions take in `appa::Target` that contains a `Pose` and `Options`. `move` targets can be a single number for a relative straight movement, a point to drive to, or a target pose which uses the boomerang controller. `turn` targets can be a single number for a target heading, or a point to face towards. `follow` targets must be a vector of `Point`. Options will be set as `target.options << options << overwrite` for the purpose of allowing the user to use a set of predefined options, and also manually set others for a specific movement. The movement parameters will automatically default to the configuration for those not specified. Movements can be done like:
 
 ```cpp
 std::vector<appa::Point> path1 = {{24, 0}, {24, 24}, {0, 24}, {0, 0}}; // path with 4 points
@@ -159,10 +156,10 @@ Options also make it very easy to tune specific types of motions and use them th
 
 ```cpp
 // preset and tuned options
-appa::Options thru = {.thru = true, .lin_exit = 4};
-appa::Options fast = {.speed = 100, .accel = 500};
-appa::Options precise = {.speed = 50, .accel = 50, .lin_PID = appa::Gains{5, 0, 1}};
-appa::Options goal_grab = {.exit_fn = [] { return claw.has_goal(); }};
+const appa::Options thru = {.thru = true, .lin_exit = 4};
+const appa::Options fast = {.speed = 100, .accel = 500};
+const appa::Options precise = {.speed = 50, .accel = 50, .lin_PID = appa::Gains{5, 0, 1}};
+const appa::Options goal_grab = {.exit_fn = [] { return claw.has_goal(); }};
 
 bot.move({24, 12});                            // move with default parameters
 bot.move({50, 10}, fast << thru);              // move with thru and fast options
@@ -171,13 +168,13 @@ bot.move({10, 0, 90}, precise, {.lead = 0.7}); // move with precise options plus
 bot.turn(90, fast);                            // turn with fast options
 ```
 
-All `Target` objects also have options tied to them. This makes it easy to share specific options with similar targets such as goals.
+All `Target` objects also have `Options` tied to them. This makes it easy to share specific options with similar targets such as goals.
 
 ```cpp
 // goal center is 10 units away from tracking center and bot should drive forward into it
-const appa::Options goal_opts{.dir = FORWARD, .offset = 10};
-const appa::Target goal_1{24, 72, goal_opts};
-const appa::Target goal_2{48, 72, goal_opts};
+const appa::Options goal_opts = {.dir = FORWARD, .offset = 10};
+const appa::Target goal_1 = {24, 72, goal_opts};
+const appa::Target goal_2 = {48, 72, goal_opts};
 
 claw.open();
 bot.move(goal_1, {.speed = 100, .lin_exit = 5});
