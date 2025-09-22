@@ -34,7 +34,6 @@ class Chassis {
             const Config& config);
     ~Chassis();
 
-    void task();
     void wait();
 
     void move(const Target& target, const Options& options = {}, const Options& overwrite = {});

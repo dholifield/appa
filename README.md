@@ -223,16 +223,12 @@ class YourLocalization : public appa::Localization {
 ```
 
 ## Custom Odometry Tracking Configuration
-Implementing your own odometry tracking configuration can be done in a similar way using the `Tracker` object as a parent. Configure the `get();` function to return a `Pose` containing the change in x, change in y, and the heading, and `init();` to return a boolean that the initialization was successful. Here is how to do this:
+Implementing your own odometry tracking configuration can be done in a similar way using the `Tracker` object as a parent. Configure the `get();` function to return a `Pose` containing the change in x, change in y, and the heading. Here is how to do this:
 ```cpp
 struct YourTracker : public appa::Tracker {
     appa::Pose get() override {
         // your implementation
         return appa::Pose(dx, dy, theta);
-    }
-    bool init() override {
-        // your implementation
-        return successful;
     }
 };
 ```
