@@ -4,29 +4,23 @@ namespace appa {
 
 /* Odom */
 Odom::Odom(Tracker& tracker, Point tracker_linear_offset, double tracker_angular_offset)
-    : tracker(tracker),
-      tracker_linear_offset(tracker_linear_offset),
-      tracker_angular_offset(to_rad(tracker_angular_offset)) {}
+    : tracker_(tracker),
+      tracker_linear_offset_(tracker_linear_offset),
+      tracker_angular_offset_(to_rad(tracker_angular_offset)) {}
 
-Odom::~Odom() {
-    if (odom_task) {
-        odom_task->remove();
-        delete odom_task;
-        odom_task = nullptr;
-    }
-}
+Odom::~Odom() { stop(); }
 
 void Odom::task() {
     printf("odom task started\n");
-    Pose prev_track = tracker.get();
+    Pose prev_track = tracker_.get();
     uint32_t now = pros::millis();
 
     int count = 0;
-    running.store(true);
+    running_.store(true);
 
-    while (running.load()) {
+    while (running_.load()) {
         // get current sensor values
-        Pose track = tracker.get();
+        Pose track = tracker_.get();
 
         // calculate change in sensor values
         Point dtrack = track - prev_track;
@@ -39,13 +33,14 @@ void Odom::task() {
         if (dtheta != 0) dtrack *= 2 * sin(dtheta / 2) / dtheta;
 
         // rotate tracker differential to global frame
-        dtrack = dtrack.rotate(track.theta + tracker_angular_offset);
+        dtrack = dtrack.rotate(track.theta + tracker_angular_offset_);
 
         // update tracker pose
-        odom_mutex.take();
-        odom_pose += dtrack;
-        odom_pose.theta = track.theta + angular_offset;
-        odom_mutex.give();
+        {
+            std::lock_guard<pros::Mutex> lock(odom_mutex_);
+            odom_pose_ += dtrack;
+            odom_pose_.theta = track.theta + angular_offset_;
+        }
 
         // debugging
         if (!(++count % 20) && debug.load()) {
@@ -60,74 +55,77 @@ void Odom::task() {
     }
 }
 
-void Odom::start() {
-    set({0.0, 0.0, 0.0});
-    if (running.load()) stop();
-    odom_task = new pros::Task([this] { task(); }, 16, TASK_STACK_DEPTH_DEFAULT, "odom_task");
+void Odom::start(Pose pose) {
+    set(pose);
+    if (running_.load()) stop();
+    odom_task_ = new pros::Task([this] { task(); }, 12, TASK_STACK_DEPTH_DEFAULT, "odom_task");
 }
 
 void Odom::stop() {
-    running.store(false);
-    odom_task->join();
-    delete odom_task;
-    odom_task = nullptr;
+    running_.store(false);
+    if (odom_task_ != nullptr) {
+        odom_task_->join();
+        delete odom_task_;
+        odom_task_ = nullptr;
+    }
 }
 
 Pose Odom::get() const {
-    std::lock_guard<pros::Mutex> lock(odom_mutex);
+    std::lock_guard<pros::Mutex> lock(odom_mutex_);
     // translate the tracker offsets to the global frame
-    return odom_pose + tracker_linear_offset.rotate(odom_pose.theta);
+    return odom_pose_ + tracker_linear_offset_.rotate(odom_pose_.theta);
 }
 
 Pose Odom::get_local() const {
-    std::lock_guard<pros::Mutex> lock(odom_mutex);
-    return odom_pose;
+    std::lock_guard<pros::Mutex> lock(odom_mutex_);
+    return odom_pose_;
 }
 
 void Odom::set(Pose pose) {
-    odom_mutex.lock();
-    pose -= tracker_linear_offset.rotate(odom_pose.theta);
-    odom_mutex.unlock();
+    {
+        std::lock_guard<pros::Mutex> lock(odom_mutex_);
+        pose -= tracker_linear_offset_.rotate(odom_pose_.theta);
+    }
     set_local(pose);
 }
 
 void Odom::set_local(Pose pose) {
-    const std::lock_guard<pros::Mutex> lock(odom_mutex);
-    if (std::isnan(pose.x)) pose.x = odom_pose.x;
-    if (std::isnan(pose.y)) pose.y = odom_pose.y;
-    if (std::isnan(pose.theta)) pose.theta = odom_pose.theta;
-    else angular_offset = pose.theta - odom_pose.theta;
-    odom_pose = pose;
+    const std::lock_guard<pros::Mutex> lock(odom_mutex_);
+    if (std::isnan(pose.x)) pose.x = odom_pose_.x;
+    if (std::isnan(pose.y)) pose.y = odom_pose_.y;
+    if (std::isnan(pose.theta)) pose.theta = odom_pose_.theta;
+    else angular_offset_ = pose.theta - odom_pose_.theta;
+    odom_pose_ = pose;
 }
 
 void Odom::set_x(double x) {
-    std::lock_guard<pros::Mutex> lock(odom_mutex);
-    odom_pose.x = x;
+    std::lock_guard<pros::Mutex> lock(odom_mutex_);
+    odom_pose_.x = x;
 }
 
 void Odom::set_y(double y) {
-    std::lock_guard<pros::Mutex> lock(odom_mutex);
-    odom_pose.y = y;
+    std::lock_guard<pros::Mutex> lock(odom_mutex_);
+    odom_pose_.y = y;
 }
 
 void Odom::set_theta(double theta) {
-    std::lock_guard<pros::Mutex> lock(odom_mutex);
-    angular_offset = theta - odom_pose.theta;
-    odom_pose.theta = theta;
+    std::lock_guard<pros::Mutex> lock(odom_mutex_);
+    angular_offset_ = theta - odom_pose_.theta;
+    odom_pose_.theta = theta;
 }
 
 void Odom::set(Point point, double theta) { set({point.x, point.y, theta}); }
 void Odom::set(double x, double y, double theta) { set({x, y, theta}); }
 
 void Odom::set_offset(Point linear) {
-    std::lock_guard<pros::Mutex> lock(odom_mutex);
-    tracker_linear_offset = linear;
+    std::lock_guard<pros::Mutex> lock(odom_mutex_);
+    tracker_linear_offset_ = linear;
 }
 
 /* Tracker */
 // Two Wheels + IMU
 TwoWheelIMU::TwoWheelIMU(EncoderWheel x_encoder, EncoderWheel y_encoder, Imu imu_port)
-    : imu(std::move(imu_port)), x_encoder(std::move(x_encoder)), y_encoder(std::move(y_encoder)) {}
+    : imu(imu_port), x_encoder(x_encoder), y_encoder(y_encoder) {}
 
 Pose TwoWheelIMU::get() {
     double x = x_encoder.get_value();
@@ -136,10 +134,11 @@ Pose TwoWheelIMU::get() {
     return Pose(x, y, theta);
 }
 
-void TwoWheelIMU::calibrate() {
+void TwoWheelIMU::calibrate(bool blocking) {
     printf("calibrating tracker...");
-    if (!imu.calibrate()) {
-        printf("\nERROR: Tracker failed to initialize: %d\n", errno);
+    if (!imu.calibrate(blocking)) {
+        if (blocking) printf("\nERROR: Tracker failed to initialize: %d\n", errno);
+        else printf("WARNING: Tracker calibrating asynchronously\n");
         return;
     }
     imu.set(0.0);
@@ -149,10 +148,7 @@ void TwoWheelIMU::calibrate() {
 // Three Wheels
 ThreeWheel::ThreeWheel(EncoderWheel lx_encoder, EncoderWheel rx_encoder, EncoderWheel y_encoder,
                        double width)
-    : width(width),
-      lx_encoder(std::move(lx_encoder)),
-      rx_encoder(std::move(rx_encoder)),
-      y_encoder(std::move(y_encoder)) {}
+    : width(width), lx_encoder(lx_encoder), rx_encoder(rx_encoder), y_encoder(y_encoder) {}
 
 Pose ThreeWheel::get() {
     double l = lx_encoder.get_value();

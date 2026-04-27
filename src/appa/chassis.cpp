@@ -6,15 +6,15 @@ namespace appa {
 Chassis::Chassis(const std::initializer_list<int8_t>& left_motors,
                  const std::initializer_list<int8_t>& right_motors, Localization& loc,
                  const Config& config)
-    : left_motors(left_motors), right_motors(right_motors), loc(loc), df_params(config) {}
+    : left_motors_(left_motors), right_motors_(right_motors), loc_(loc), df_params_(config) {}
 
 Chassis::~Chassis() { stop(); }
 
 void Chassis::wait() {
-    if (chassis_task) {
-        chassis_task->join();
-        chassis_task->remove();
-        delete chassis_task;
+    if (chassis_task_ != nullptr) {
+        chassis_task_->join();
+        delete chassis_task_;
+        chassis_task_ = nullptr;
     }
 }
 
@@ -30,7 +30,7 @@ void Chassis::motion_task(Pose target, const Parameters prm, const Motion motion
     PID ang_PID(prm.ang_PID);
 
     Pose prev_pose; // prev_pose is NAN so first iteration never exits
-    Pose pose = loc.get();
+    Pose pose = loc_.get();
     Point error, carrot, speeds, abs_speeds;
     double lin_speed, ang_speed;
 
@@ -52,9 +52,9 @@ void Chassis::motion_task(Pose target, const Parameters prm, const Motion motion
     int counter = 0;
 
     // control loop
-    while (!exit && running.load()) {
+    while (!exit && running_.load()) {
         // find error and direction based on motion type
-        pose = loc.get();
+        pose = loc_.get();
         switch (motion) {
         case MOVE:
             // error
@@ -87,7 +87,7 @@ void Chassis::motion_task(Pose target, const Parameters prm, const Motion motion
             double dist = carrot.x + prm.lookahead - fabs(carrot.y) / 2; // circle approximation
             if (dist > 0) exit = true; // exit when carrot reaches waypoint
             carrot = target.project(dist);
-            error = {pose.dist(target) + path_length - prm.offset, pose.angle(carrot)};
+            error = {pose.dist(target) + path_length_ - prm.offset, pose.angle(carrot)};
             // direction
             if (dir == REVERSE) {
                 error.angular += error.angular > 0 ? -M_PI : M_PI;
@@ -106,7 +106,7 @@ void Chassis::motion_task(Pose target, const Parameters prm, const Motion motion
             else if (prm.turn == CCW && error.angular > 0) error.angular -= 2 * M_PI;
             break;
         default:
-            running.store(false);
+            running_.store(false);
             continue;
         }
 
@@ -130,12 +130,11 @@ void Chassis::motion_task(Pose target, const Parameters prm, const Motion motion
 
         // limit acceleration
         if (accel_step) {
-            chassis_mutex.take();
-            if (abs_speeds.left - fabs(prev_speeds.left) > accel_step)
-                speeds.left = prev_speeds.left + (speeds.left > 0 ? accel_step : -accel_step);
-            if (abs_speeds.right - fabs(prev_speeds.right) > accel_step)
-                speeds.right = prev_speeds.right + (speeds.right > 0 ? accel_step : -accel_step);
-            chassis_mutex.give();
+            std::lock_guard<pros::Mutex> lock(chassis_mutex_);
+            if (abs_speeds.left - fabs(prev_speeds_.left) > accel_step)
+                speeds.left = prev_speeds_.left + (speeds.left > 0 ? accel_step : -accel_step);
+            if (abs_speeds.right - fabs(prev_speeds_.right) > accel_step)
+                speeds.right = prev_speeds_.right + (speeds.right > 0 ? accel_step : -accel_step);
         }
 
         // set motor speeds
@@ -156,7 +155,7 @@ void Chassis::motion_task(Pose target, const Parameters prm, const Motion motion
         if (exit_speed.check(pose - prev_pose, dt)) exit = true;
         prev_pose = pose;
         //   custom lambda
-        if (prm.exit_fn && prm.exit_fn()) running.store(false);
+        if (prm.exit_fn && prm.exit_fn()) running_.store(false);
 
         // delay task
         pros::c::task_delay_until(&now, dt);
@@ -171,43 +170,40 @@ void Chassis::motion_task(Pose target, const Parameters prm, const Motion motion
             counter = 0;
         }
     }
-    if (!running.load() || (!prm.thru && !(motion == PATH))) tank(0, 0);
+    if (!running_.load() || (!prm.thru && !(motion == PATH))) tank(0, 0);
 }
 
 void Chassis::motion_handler(const std::vector<Pose>& target, const Options& options,
                              const Motion& motion) {
     // stop task if chassis is already moving
-    if (chassis_task) {
-        chassis_task->remove();
-        delete chassis_task;
-    }
+    stop();
 
     // apply options
-    Parameters params = df_params.apply(options);
+    Parameters params = df_params_.apply(options);
 
     // determine movement function
     std::function<void()> movement;
     if (motion == PATH) {
         movement = [this, path = target, params] {
-            running.store(true);
-            for (int i = 0; i < path.size() - 1 && running.load(); ++i) {
+            running_.store(true);
+            for (int i = 0; i < path.size() - 1 && running_.load(); ++i) {
                 motion_task(path[i], params, PATH);
-                path_length -= path[i].dist(path[i + 1]);
+                path_length_ -= path[i].dist(path[i + 1]);
             }
             motion_task(path[path.size() - 1], params, MOVE);
-            running.store(false);
+            running_.store(false);
         };
     } else {
         movement = [this, target, params, motion] {
-            running.store(true);
+            running_.store(true);
             motion_task(target[0], params, motion);
-            running.store(false);
+            running_.store(false);
         };
     }
 
     // start task if async
     if (params.async) {
-        chassis_task = new pros::Task(movement, "chassis_task");
+        chassis_task_ = new pros::Task(movement, "chassis_task_");
     } else {
         movement();
     }
@@ -250,7 +246,7 @@ void Chassis::follow(const std::vector<Point>& path, const Options& options,
     combined_options.relative = false;
 
     // copy points to poses and convert if relative
-    Pose pose = loc.get();
+    Pose pose = loc_.get();
     std::vector<Pose> poses;
     for (auto target : path) {
         if (relative) target = pose.p() + target.rotate(pose.theta);
@@ -259,10 +255,10 @@ void Chassis::follow(const std::vector<Point>& path, const Options& options,
 
     // calculate heading for poses and path length
     poses[0].theta = to_deg(pose.p().angle(path[0]));
-    path_length = 0;
+    path_length_ = 0;
     for (int i = 1; i < poses.size(); i++) {
         poses[i].theta = to_deg(poses[i].p().angle(poses[i - 1]) + M_PI);
-        path_length += poses[i].dist(poses[i - 1]);
+        path_length_ += poses[i].dist(poses[i - 1]);
     }
 
     // run motion
@@ -270,10 +266,10 @@ void Chassis::follow(const std::vector<Point>& path, const Options& options,
 }
 
 void Chassis::tank(double left_speed, double right_speed) {
-    std::lock_guard<pros::Mutex> lock(chassis_mutex);
-    left_motors.move_voltage(left_speed * 120);
-    right_motors.move_voltage(right_speed * 120);
-    prev_speeds = {left_speed, right_speed};
+    std::lock_guard<pros::Mutex> lock(chassis_mutex_);
+    left_motors_.move_voltage(left_speed * 120);
+    right_motors_.move_voltage(right_speed * 120);
+    prev_speeds_ = {left_speed, right_speed};
 }
 void Chassis::tank(const Point& speeds) { tank(speeds.left, speeds.right); }
 void Chassis::tank(pros::Controller& controller) {
@@ -289,17 +285,14 @@ void Chassis::arcade(pros::Controller& controller) {
 }
 
 void Chassis::stop() {
-    running.store(false);
-    chassis_task->join();
-    delete chassis_task;
-    chassis_task = nullptr;
-    tank(0, 0);
+    running_.store(false);
+    wait();
 }
 
 void Chassis::set_brake_mode(const pros::motor_brake_mode_e_t mode) {
-    std::lock_guard<pros::Mutex> lock(chassis_mutex);
-    left_motors.set_brake_mode_all(mode);
-    right_motors.set_brake_mode_all(mode);
+    std::lock_guard<pros::Mutex> lock(chassis_mutex_);
+    left_motors_.set_brake_mode_all(mode);
+    right_motors_.set_brake_mode_all(mode);
 }
 
 } // namespace appa

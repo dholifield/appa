@@ -40,20 +40,20 @@ void disabled() {}
 
 void competition_initialize() {}
 
-const appa::Options goal_opts = {.dir = FORWARD, .offset = 10};
+const appa::Options goal_opts = {.dir = appa::FORWARD, .offset = 10};
 const appa::Target goal_1 = {24, 72, goal_opts};
 const appa::Target goal_2 = {48, 72, goal_opts};
 
 void autonomous() {
     printf("autonomous started\n");
-    // odom.set(0, 0, 0);
+    odom.set(0, 0, 0);
 
     // claw.open();
     bot.move(goal_1, {.speed = 100, .lin_exit = 10});
     // claw.close();
     bot.move(goal_1, {.speed = 100});
 
-    bot.turn(180, {.turn = CCW, .relative = true});
+    bot.turn(180, {.turn = appa::CCW, .relative = true});
 
     bot.move({24, 24}, {.speed = 50});
     master.rumble("-");
@@ -66,7 +66,7 @@ void opcontrol() {
     master.rumble(".");
 
     while (true) {
-        if (master.get_digital_new_press(DIGITAL_A)) {
+        if (!pros::competition::is_connected() && master.get_digital_new_press(DIGITAL_A)) {
             bot.set_brake_mode(MOTOR_BRAKE_HOLD);
             autonomous();
             bot.set_brake_mode(MOTOR_BRAKE_COAST);

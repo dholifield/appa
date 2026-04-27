@@ -10,16 +10,16 @@ namespace appa {
 /* Odom */
 class Odom : public Localization {
   private:
-    Pose odom_pose = {0.0, 0.0, 0.0};
-    mutable pros::Mutex odom_mutex;
-    std::atomic<bool> running{false};
-    pros::Task* odom_task = nullptr;
+    Pose odom_pose_ = {0.0, 0.0, 0.0};
+    mutable pros::Mutex odom_mutex_;
+    std::atomic<bool> running_{false};
+    pros::Task* odom_task_ = nullptr;
 
-    Tracker& tracker;
-    double angular_offset = 0.0;
+    Tracker& tracker_;
+    double angular_offset_ = 0.0;
 
-    Point tracker_linear_offset;
-    double tracker_angular_offset;
+    Point tracker_linear_offset_;
+    double tracker_angular_offset_;
 
     void task();
 
@@ -29,7 +29,7 @@ class Odom : public Localization {
     Odom(Tracker& tracker, Point tracker_linear_offset, double tracker_angular_offset);
     ~Odom();
 
-    void start();
+    void start(Pose pose = {0.0, 0.0, 0.0});
     void stop();
 
     Pose get() const override;
@@ -53,7 +53,7 @@ struct TwoWheelIMU : public Tracker {
     TwoWheelIMU(EncoderWheel x_encoder, EncoderWheel y_encoder, Imu imu_port);
 
     Pose get() override;
-    void calibrate();
+    void calibrate(bool blocking = true);
 };
 
 // Three Wheels

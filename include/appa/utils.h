@@ -81,7 +81,8 @@ struct Imu {
     Imu(std::initializer_list<uint8_t> ports = {});
     Imu(uint8_t port);
 
-    bool calibrate();
+    bool calibrate(bool blocking = true);
+    bool is_calibrating();
     double get();
     void set(double angle);
 };
@@ -111,11 +112,11 @@ class Localization {
 /* Options and Parameters */
 enum Direction { AUTO, FORWARD, REVERSE, CCW, CW };
 
-#define AUTO appa::AUTO
-#define FORWARD appa::FORWARD
-#define REVERSE appa::REVERSE
-#define CCW appa::CCW
-#define CW appa::CW
+// #define AUTO appa::AUTO
+// #define FORWARD appa::FORWARD
+// #define REVERSE appa::REVERSE
+// #define CCW appa::CCW
+// #define CW appa::CW
 
 struct ExitSpeed {
     double linear, angular;

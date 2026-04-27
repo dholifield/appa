@@ -10,15 +10,15 @@ namespace appa {
 /* Chassis */
 class Chassis {
   private:
-    pros::MotorGroup left_motors, right_motors;
-    Localization& loc;
-    Parameters df_params;
-    Point prev_speeds = {0.0, 0.0};
-    double path_length = 0.0;
+    pros::MotorGroup left_motors_, right_motors_;
+    Localization& loc_;
+    Parameters df_params_;
+    Point prev_speeds_ = {0.0, 0.0};
+    double path_length_ = 0.0;
 
-    pros::Task* chassis_task = nullptr;
-    pros::Mutex chassis_mutex;
-    std::atomic<bool> running{false};
+    pros::Task* chassis_task_ = nullptr;
+    pros::Mutex chassis_mutex_;
+    std::atomic<bool> running_{false};
 
     enum Motion { MOVE, PATH, TURN };
 

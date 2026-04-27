@@ -101,22 +101,23 @@ Imu::Imu(std::initializer_list<uint8_t> ports) {
 }
 Imu::Imu(uint8_t port) { imus.emplace_back(port); }
 
-bool Imu::calibrate() {
+bool Imu::calibrate(bool blocking) {
     if (imus.empty()) return true;
     for (auto& imu : imus) {
         imu.reset(false);
         imu.set_data_rate(5);
     }
+
     uint32_t start = pros::millis();
-    bool all_calibrated = false;
-    while (!all_calibrated && (pros::millis() - start < 5000)) {
-        all_calibrated = true;
-        for (auto& imu : imus) {
-            if (imu.is_calibrating()) all_calibrated = false;
-        }
+    while (is_calibrating() && blocking && (pros::millis() - start < 5000))
         pros::delay(50);
+    return !is_calibrating();
+}
+bool Imu::is_calibrating() {
+    for (auto& imu : imus) {
+        if (imu.is_calibrating()) return true;
     }
-    return all_calibrated;
+    return false;
 }
 double Imu::get() {
     double rotation = 0;
