@@ -1,6 +1,6 @@
 # To Do
-- [ ] maybe make path struct. calculate headings in constructor and store path length
-- [ ] maybe add radius to turn so you can do arc movements
+- [ ] maybe make path struct. calculate headings in constructor and store total path length
+- [ ] maybe add radius parameter to turn so you can do arc movements, but target pose would be more consistent anyway
 - [ ] add new op control setting for fancy curves and scaling and deadzone
 
 # Testing
@@ -12,7 +12,7 @@
     - [ ] turn to heading
     - [ ] turn to point
     - [ ] follow path
- test all options
+- test all options
     - [ ] dir
         - [ ] move point
         - [ ] move pose

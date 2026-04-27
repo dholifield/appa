@@ -29,7 +29,8 @@ void Chassis::motion_task(Pose target, const Parameters prm, const Motion motion
     PID lin_PID(prm.lin_PID);
     PID ang_PID(prm.ang_PID);
 
-    Pose prev_pose, pose = loc.get(); // prev_pose is NAN so first iteration is always false
+    Pose prev_pose; // prev_pose is NAN so first iteration never exits
+    Pose pose = loc.get();
     Point error, carrot, speeds, abs_speeds;
     double lin_speed, ang_speed;
 

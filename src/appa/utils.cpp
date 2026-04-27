@@ -109,7 +109,7 @@ bool Imu::calibrate() {
     }
     uint32_t start = pros::millis();
     bool all_calibrated = false;
-    while ((pros::millis() - start < 3000) && !all_calibrated) {
+    while (!all_calibrated && (pros::millis() - start < 5000)) {
         all_calibrated = true;
         for (auto& imu : imus) {
             if (imu.is_calibrating()) all_calibrated = false;
