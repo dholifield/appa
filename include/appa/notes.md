@@ -1,7 +1,13 @@
 # To Do
+- [ ] convert to header only
+- [ ] add odom wait or to chassis wait function to have specific exit conditions, e.g. wait for robot to be in this area of movement
+## Maybe
 - [ ] maybe make path struct. calculate headings in constructor and store total path length
-- [ ] maybe add radius parameter to turn so you can do arc movements, but target pose would be more consistent anyway
+- [ ] maybe add radius parameter to turn so you can do arc movements (for coarser movements), although target pose would be more consistent
 - [ ] add new op control setting for fancy curves and scaling and deadzone
+- [ ] add a queue for the chassis movements so you can set a sequence of movements at once. would be nice for async chains so you don't have to keep calling wait() between movements. could implement into the motion_handler
+    - [ ] if I do this, it might make more sence to have a chassis task running constantly, like ARMS, then you just send movements to the queue, and have things like clear queue etc.
+    - [ ] or even create a chain movement type that takes it movement objects
 
 # Testing
 - [ ] back to back movements

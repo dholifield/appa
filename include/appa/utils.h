@@ -29,6 +29,7 @@ struct Point {
     double dist(const Point& other) const;
     double angle(const Point& other, double offset = 0.0) const;
     Point rotate(double theta) const;
+    bool is_valid() const { return std::isfinite(x) && std::isfinite(y); }
 };
 
 /* Pose */
@@ -55,6 +56,7 @@ struct Pose {
     double dist(const Point& other) const;
     double angle(const Point& other) const;
     Point project(double d) const;
+    bool is_valid() const { return std::isfinite(x) && std::isfinite(y) && std::isfinite(theta); }
 };
 
 /* PID */

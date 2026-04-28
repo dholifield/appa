@@ -91,9 +91,9 @@ void Odom::set(Pose pose) {
 
 void Odom::set_local(Pose pose) {
     const std::lock_guard<pros::Mutex> lock(odom_mutex_);
-    if (std::isnan(pose.x)) pose.x = odom_pose_.x;
-    if (std::isnan(pose.y)) pose.y = odom_pose_.y;
-    if (std::isnan(pose.theta)) pose.theta = odom_pose_.theta;
+    if (!std::isfinite(pose.x)) pose.x = odom_pose_.x;
+    if (!std::isfinite(pose.y)) pose.y = odom_pose_.y;
+    if (!std::isfinite(pose.theta)) pose.theta = odom_pose_.theta;
     else angular_offset_ = pose.theta - odom_pose_.theta;
     odom_pose_ = pose;
 }
@@ -137,8 +137,8 @@ Pose TwoWheelIMU::get() {
 void TwoWheelIMU::calibrate(bool blocking) {
     printf("calibrating tracker...");
     if (!imu.calibrate(blocking)) {
-        if (blocking) printf("\nERROR: Tracker failed to initialize: %d\n", errno);
-        else printf("WARNING: Tracker calibrating asynchronously\n");
+        if (blocking) printf("\nERROR: Tracker IMU failed to initialize: %d\n", errno);
+        else printf("WARNING: Tracker IMU calibrating asynchronously\n");
         return;
     }
     imu.set(0.0);

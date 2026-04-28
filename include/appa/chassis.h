@@ -22,6 +22,7 @@ class Chassis {
 
     enum Motion { MOVE, PATH, TURN };
 
+    void move_motors(Point speeds);
     void motion_task(Pose target, const Parameters prm, const Motion motion);
     void motion_handler(const std::vector<Pose>& target, const Options& options,
                         const Motion& motion);
@@ -35,18 +36,17 @@ class Chassis {
     ~Chassis();
 
     void wait();
+    void stop(bool blocking = true);
 
     void move(const Target& target, const Options& options = {}, const Options& overwrite = {});
     void follow(const std::vector<Point>& path, const Options& options = {},
                 const Options& overwrite = {});
     void turn(const Target& target, const Options& options = {}, const Options& overwrite = {});
 
-    void tank(double left_speed, double right_speed);
-    void tank(const Point& speeds);
-    void tank(pros::Controller& controller);
-    void arcade(double linear, double angular);
-    void arcade(pros::Controller& controller);
-    void stop();
+    void tank(double left_speed, double right_speed, bool override = false);
+    void tank(pros::Controller& controller, bool override = false);
+    void arcade(double linear, double angular, bool override = false);
+    void arcade(pros::Controller& controller, bool override = false);
 
     void set_brake_mode(pros::motor_brake_mode_e mode);
 };

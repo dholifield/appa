@@ -103,7 +103,7 @@ Imu::Imu(uint8_t port) { imus.emplace_back(port); }
 
 bool Imu::calibrate(bool blocking) {
     if (imus.empty()) return true;
-    for (auto& imu : imus) {
+    for (pros::Imu& imu : imus) {
         imu.reset(false);
         imu.set_data_rate(5);
     }
@@ -114,20 +114,20 @@ bool Imu::calibrate(bool blocking) {
     return !is_calibrating();
 }
 bool Imu::is_calibrating() {
-    for (auto& imu : imus) {
+    for (pros::Imu& imu : imus) {
         if (imu.is_calibrating()) return true;
     }
     return false;
 }
 double Imu::get() {
     double rotation = 0;
-    for (auto& imu : imus) {
+    for (pros::Imu& imu : imus) {
         rotation -= imu.get_rotation();
     }
     return rotation / imus.size();
 }
 void Imu::set(double angle) {
-    for (auto& imu : imus) {
+    for (pros::Imu& imu : imus) {
         imu.set_rotation(-angle);
     }
 }

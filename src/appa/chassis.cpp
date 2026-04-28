@@ -8,11 +8,11 @@ Chassis::Chassis(const std::initializer_list<int8_t>& left_motors,
                  const Config& config)
     : left_motors_(left_motors), right_motors_(right_motors), loc_(loc), df_params_(config) {}
 
-Chassis::~Chassis() { stop(); }
+Chassis::~Chassis() { stop(true); }
 
 void Chassis::wait() {
     if (chassis_task_ != nullptr) {
-        chassis_task_->join();
+        chassis_task_->join(); // confirm that join behaves properly for a task that is finished
         delete chassis_task_;
         chassis_task_ = nullptr;
     }
@@ -138,7 +138,7 @@ void Chassis::motion_task(Pose target, const Parameters prm, const Motion motion
         }
 
         // set motor speeds
-        tank(speeds);
+        move_motors(speeds);
 
         // exit conditions
         //   timeout
@@ -170,13 +170,13 @@ void Chassis::motion_task(Pose target, const Parameters prm, const Motion motion
             counter = 0;
         }
     }
-    if (!running_.load() || (!prm.thru && !(motion == PATH))) tank(0, 0);
+    if (!running_.load() || (!prm.thru && !(motion == PATH))) move_motors({0, 0});
 }
 
 void Chassis::motion_handler(const std::vector<Pose>& target, const Options& options,
                              const Motion& motion) {
     // stop task if chassis is already moving
-    stop();
+    stop(true);
 
     // apply options
     Parameters params = df_params_.apply(options);
@@ -248,7 +248,7 @@ void Chassis::follow(const std::vector<Point>& path, const Options& options,
     // copy points to poses and convert if relative
     Pose pose = loc_.get();
     std::vector<Pose> poses;
-    for (auto target : path) {
+    for (Point target : path) {
         if (relative) target = pose.p() + target.rotate(pose.theta);
         poses.push_back({target, NAN});
     }
@@ -265,28 +265,39 @@ void Chassis::follow(const std::vector<Point>& path, const Options& options,
     motion_handler(poses, combined_options, PATH);
 }
 
-void Chassis::tank(double left_speed, double right_speed) {
+void Chassis::move_motors(Point speeds) {
+    if (!speeds.is_valid()) return;
     std::lock_guard<pros::Mutex> lock(chassis_mutex_);
-    left_motors_.move_voltage(left_speed * 120);
-    right_motors_.move_voltage(right_speed * 120);
-    prev_speeds_ = {left_speed, right_speed};
-}
-void Chassis::tank(const Point& speeds) { tank(speeds.left, speeds.right); }
-void Chassis::tank(pros::Controller& controller) {
-    double left_speed = controller.get_analog(pros::E_CONTROLLER_ANALOG_LEFT_Y) / 1.27;
-    double right_speed = controller.get_analog(pros::E_CONTROLLER_ANALOG_RIGHT_Y) / 1.27;
-    tank(left_speed, right_speed);
-}
-void Chassis::arcade(double linear, double angular) { tank(linear + angular, linear - angular); }
-void Chassis::arcade(pros::Controller& controller) {
-    double linear = controller.get_analog(pros::E_CONTROLLER_ANALOG_LEFT_Y) / 1.27;
-    double angular = controller.get_analog(pros::E_CONTROLLER_ANALOG_RIGHT_X) / 1.27;
-    arcade(linear, angular);
+    left_motors_.move_voltage(speeds.left * 120);
+    right_motors_.move_voltage(speeds.right * 120);
+    prev_speeds_ = speeds;
 }
 
-void Chassis::stop() {
+void Chassis::tank(double left_speed, double right_speed, bool override) {
+    if (running_.load()) {         // if active movement
+        if (override) stop(false); // stop if override, non-blocking
+        else return;               // return if not override
+    }
+    move_motors({left_speed, right_speed});
+}
+void Chassis::tank(pros::Controller& controller, bool override) {
+    double left_speed = controller.get_analog(pros::E_CONTROLLER_ANALOG_LEFT_Y) / 1.27;
+    double right_speed = controller.get_analog(pros::E_CONTROLLER_ANALOG_RIGHT_Y) / 1.27;
+    tank(left_speed, right_speed, override);
+}
+
+void Chassis::arcade(double linear, double angular, bool override) {
+    tank(linear + angular, linear - angular, override);
+}
+void Chassis::arcade(pros::Controller& controller, bool override) {
+    double linear = controller.get_analog(pros::E_CONTROLLER_ANALOG_LEFT_Y) / 1.27;
+    double angular = controller.get_analog(pros::E_CONTROLLER_ANALOG_RIGHT_X) / 1.27;
+    arcade(linear, angular, override);
+}
+
+void Chassis::stop(bool blocking) {
     running_.store(false);
-    wait();
+    if (blocking) wait();
 }
 
 void Chassis::set_brake_mode(const pros::motor_brake_mode_e_t mode) {
