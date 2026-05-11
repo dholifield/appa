@@ -83,7 +83,7 @@ void Chassis::motion_task(Pose target, const Parameters prm, const Motion motion
             break;
         case PATH: {
             // error
-            carrot = (target.p() - pose.p()).rotate(-target.theta);
+            carrot = (pose.p() - target.p()).rotate(-target.theta);
             double dist = carrot.x + prm.lookahead - fabs(carrot.y) / 2; // circle approximation
             if (dist > 0) exit = true; // exit when carrot reaches waypoint
             carrot = target.project(dist);
